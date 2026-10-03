@@ -1,14 +1,12 @@
 /**
- * Learn more about light and dark modes:
+ * Returns the color palette for the phone's current light/dark setting.
  * https://docs.expo.dev/guides/color-schemes/
  */
 
-import { Colors } from '@/constants/theme';
+import { Colors, ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export function useTheme() {
+export function useTheme(): ThemeColors {
   const scheme = useColorScheme();
-  const theme = scheme === 'unspecified' ? 'light' : scheme;
-
-  return Colors[theme];
+  return scheme === 'dark' ? Colors.dark : Colors.light;
 }

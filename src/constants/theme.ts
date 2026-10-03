@@ -1,65 +1,49 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
-import '@/global.css';
-
-import { Platform } from 'react-native';
+// Halfsies colors for light and dark mode.
+// Brand: warm orange (#FF6B35) + deep navy (#13294B).
+// Buttons use navy text on orange because white on this orange is too faint to read easily.
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    primary: '#FF6B35',
+    onPrimary: '#13294B', // text drawn on top of orange
+    text: '#13294B',
+    textSecondary: '#5B6B82',
+    background: '#FFF8F3',
+    card: '#FFFFFF',
+    border: '#EADFD6',
+    inputBackground: '#FFFFFF',
+    danger: '#C62828',
+    success: '#2E7D32',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    primary: '#FF7A4A',
+    onPrimary: '#13294B',
+    text: '#F4F6FA',
+    textSecondary: '#A9B6CA',
+    background: '#0B1A30',
+    card: '#13294B',
+    border: '#24406B',
+    inputBackground: '#0F2140',
+    danger: '#FF8A80',
+    success: '#81C784',
   },
 } as const;
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
+export type ThemeColors = { [K in keyof typeof Colors.light]: string };
 
 export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const Radius = {
+  md: 12,
+  lg: 20,
+  pill: 999,
+} as const;
+
+// Minimum height for anything tappable (Apple recommends at least 44).
+export const TapTarget = 52;

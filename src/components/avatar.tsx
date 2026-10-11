@@ -1,8 +1,9 @@
 // A round profile photo. Shows the person's initials if there's no photo.
 
 import { Image } from 'expo-image';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks/use-theme';
 
 export function initials(name: string): string {
@@ -23,7 +24,7 @@ export function Avatar({ uri, name, size = 64 }: { uri?: string | null; name: st
   }
   return (
     <View style={[styles.fallback, circle, { backgroundColor: colors.primary }]}>
-      <Text style={{ color: colors.onPrimary, fontSize: size * 0.38, fontWeight: '800' }}>{initials(name) || '?'}</Text>
+      <Text style={{ color: colors.onPrimary, fontSize: size * 0.38, fontWeight: '700' }}>{initials(name) || '?'}</Text>
     </View>
   );
 }

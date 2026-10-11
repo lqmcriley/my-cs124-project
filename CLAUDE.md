@@ -4,7 +4,19 @@ Halfsies is a carpool app for UIUC students. Drivers post trips they're already 
 
 The owner is a beginner. Keep code simple, explain changes in plain language, and build one phase at a time (see `SPEC.md` → Build phases). Stop after each phase so the owner can test it.
 
-**Status:** Phase 1 (setup, login, profile) done. Next: Phase 2 (trips).
+## Collaboration style: Conversational
+
+- Talk like a friendly teammate: plain language, no jargon without a quick explanation.
+- Before a big step, say in a sentence or two what you're about to do and why. After it, say what changed and what the owner should try.
+- When a choice affects how the app looks, works or costs money, ask the owner instead of deciding silently. Offer a recommendation.
+- Give step-by-step instructions (numbered, with exact button names) for anything the owner has to do in Supabase, Google Cloud, Expo or on their phone.
+- Keep replies short and skimmable. Check in rather than dumping everything at once.
+
+**Status:** Phases 1–2 done and tested by the owner. Phase 3 (booking: requests, approve/decline, My trips, cancellations) built, awaiting owner testing. Next: Phase 4 (chat + payments).
+
+**Pricing decision (owner's choice):** riders pay based on how many people actually ride. Trips show the price "if you join now" (booked riders + you), "as low as" (full car), and a per-rider-count table. Phase 3/4 must compute what each rider owes from the actual number of riders. See `src/lib/pricing.ts`.
+
+**Other owner decisions:** drivers can edit seats (up to car seats) and airport/parking details after posting, but not route, pickup or gas price. Airport trips store the driver's flight + parking (terminal or off-site + shuttle) and suggest a leave time (`src/lib/airport.ts`). Payment handles (Venmo/Cash App/PayPal) live in the private `payment_methods` table; only the owner can read them until Phase 4 opens them to approved riders. Tab bar is `NativeTabs` (Liquid Glass on iOS 26). No emojis in the UI; use Ionicons.
 
 ## Stack
 
@@ -23,11 +35,18 @@ src/
     profile-setup.tsx       First-time profile (uses ProfileForm)
     edit-profile.tsx        Modal, same ProfileForm
     (tabs)/_layout.tsx      Bottom tabs
-    (tabs)/index.tsx        Home / Find a ride (placeholder until Phase 2)
+    (tabs)/index.tsx        Home / Find a ride (search, quick picks, list/map)
+    (tabs)/post.tsx         Post a trip (live route + price preview)
+    trip/[id].tsx           Trip detail
+    edit-trip/[id].tsx      Edit trip (driver)
+    request-seat/[id].tsx   Request a seat (rider; drop-off, note, parking OK)
+    (tabs)/my-trips.tsx     My trips: needs-your-answer, upcoming/past, driving/riding
     (tabs)/profile.tsx      Your profile, car, sign out
   components/
     ui.tsx                  Screen, Heading, Body, Label, Button, TextField, Chip, Card, ErrorText
     profile-form.tsx        Profile + car form
+    place-search-field.tsx  Google address autocomplete
+    route-map.tsx, trips-map.tsx, trip-card.tsx, price-breakdown.tsx, date-time-field.tsx
     avatar.tsx, logo.tsx
   constants/theme.ts        Light/dark colors, spacing, radius, TapTarget
   hooks/use-theme.ts        Current color palette
@@ -38,6 +57,13 @@ src/
     email.ts                @illinois.edu check
     profile-form.ts         Form validation + conversion to DB rows (pure, tested)
     profile-api.ts          Save profile/car, upload avatar
+    pricing.ts              ⭐ Fair-price formula (tested)
+    maps.ts                 Google Places (New) + Routes API calls
+    geo.ts, format.ts       Distance, polyline decoding, text formatting
+    trip-form.ts, trip-search.ts, trips-api.ts   Post/edit-trip rules, search filter, Supabase queries
+    airport.ts              Leave-time + terminal-arrival math (tested)
+    booking.ts, booking-api.ts   Booking rules (tested) + calls to request_seat / respond_to_request / cancel_request / trip_riders
+    payments.ts             Payment handle cleanup/validation + pay links (tested)
     types.ts                Row types; keep in sync with migrations
     __tests__/              Jest unit tests for the pure lib files
   providers/auth-provider.tsx   session, profile, car, loading, refreshProfile, signOut
@@ -45,6 +71,8 @@ supabase/migrations/        SQL, one file per phase; run in filename order
 ```
 
 ## Rules to never break
+
+- Booking writes go only through the security-definer SQL functions in the Phase 3 migration; `trip_requests` has no insert/update policies. `trips.seats_booked` is maintained by those functions (never writable by clients).
 
 - The `@illinois.edu` check lives in **both** `lib/email.ts` and a database trigger on `auth.users`.
 - Every table has RLS enabled with policies. Users write only their own rows. Never use the secret/service-role key in the app.

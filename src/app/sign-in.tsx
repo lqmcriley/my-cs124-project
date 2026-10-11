@@ -1,5 +1,5 @@
 // Screen 1: Welcome / Sign in.
-// Step 1: enter an @illinois.edu email -> Supabase emails a 6-digit code.
+// Step 1: enter an @illinois.edu email -> Supabase emails a sign-in code (6–8 digits, set in the Supabase dashboard).
 // Step 2: enter the code -> you're signed in. The root layout then moves you on.
 
 import { useState } from 'react';
@@ -10,6 +10,10 @@ import { Body, Button, ErrorText, Heading, Screen, TextField } from '@/component
 import { Spacing } from '@/constants/theme';
 import { isIllinoisEmail, normalizeEmail } from '@/lib/email';
 import { supabase } from '@/lib/supabase';
+
+// Supabase's code length is a dashboard setting (Email OTP Length), so accept 6–8 digits.
+const CODE_MIN_LENGTH = 6;
+const CODE_MAX_LENGTH = 8;
 
 const NOT_UIUC_MESSAGE = 'Halfsies is only for UIUC students. Please use your @illinois.edu email.';
 
@@ -54,7 +58,7 @@ export default function SignInScreen() {
     }
     setCode('');
     setStep('code');
-    setNotice(`We sent a 6-digit code to ${normalizeEmail(email)}.`);
+    setNotice(`We sent a sign-in code to ${normalizeEmail(email)}.`);
   }
 
   async function verifyCode(token: string) {
@@ -74,9 +78,9 @@ export default function SignInScreen() {
   }
 
   function onCodeChange(text: string) {
-    const digits = text.replace(/\D/g, '').slice(0, 6);
+    const digits = text.replace(/\D/g, '').slice(0, CODE_MAX_LENGTH);
     setCode(digits);
-    if (digits.length === 6) verifyCode(digits);
+    if (digits.length === CODE_MAX_LENGTH) verifyCode(digits);
   }
 
   return (
@@ -111,19 +115,19 @@ export default function SignInScreen() {
         <View style={styles.form}>
           <Body>{notice}</Body>
           <TextField
-            label="6-digit code"
-            placeholder="123456"
+            label="Sign-in code"
+            placeholder="12345678"
             value={code}
             onChangeText={onCodeChange}
             keyboardType="number-pad"
             textContentType="oneTimeCode"
             autoComplete="one-time-code"
-            maxLength={6}
+            maxLength={CODE_MAX_LENGTH}
             autoFocus
             style={styles.codeInput}
           />
           <ErrorText>{error}</ErrorText>
-          <Button title="Sign in" onPress={() => verifyCode(code)} loading={busy} disabled={code.length !== 6} />
+          <Button title="Sign in" onPress={() => verifyCode(code)} loading={busy} disabled={code.length < CODE_MIN_LENGTH} />
           <Button title="Send a new code" variant="ghost" onPress={sendCode} disabled={busy} />
           <Button
             title="Use a different email"

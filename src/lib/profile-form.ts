@@ -1,6 +1,7 @@
 // The rules for the profile + car form, kept separate from the screen so they're easy to test.
 
 import { BIO_MAX_LENGTH, MAX_MPG, MAX_PASSENGER_SEATS, MIN_MPG } from './config';
+import { cleanHandle, handleError, PaymentMethods } from './payments';
 import type { Car, ChatPreference, ClassYear, Profile } from './types';
 
 // What the form holds while you're typing. Numbers are strings until we save.
@@ -17,11 +18,19 @@ export type ProfileFormValues = {
   plate: string;
   mpg: string;
   seats: string;
+  // Payment handles (optional, private)
+  venmo: string;
+  cashapp: string;
+  paypal: string;
 };
 
 export type ProfileFormErrors = Partial<Record<keyof ProfileFormValues, string>>;
 
-export function initialFormValues(profile: Profile | null, car: Car | null): ProfileFormValues {
+export function initialFormValues(
+  profile: Profile | null,
+  car: Car | null,
+  payment: PaymentMethods | null = null,
+): ProfileFormValues {
   return {
     fullName: profile?.full_name ?? '',
     year: profile?.year ?? null,
@@ -35,6 +44,9 @@ export function initialFormValues(profile: Profile | null, car: Car | null): Pro
     plate: car?.plate ?? '',
     mpg: car ? String(car.mpg) : '',
     seats: car ? String(car.seats) : '',
+    venmo: payment?.venmo_username ?? '',
+    cashapp: payment?.cashapp_cashtag ?? '',
+    paypal: payment?.paypal_username ?? '',
   };
 }
 
@@ -63,6 +75,13 @@ export function validateProfileForm(values: ProfileFormValues): ProfileFormError
     }
   }
 
+  const venmoError = handleError('venmo', cleanHandle(values.venmo));
+  const cashappError = handleError('cashapp', cleanHandle(values.cashapp));
+  const paypalError = handleError('paypal', cleanHandle(values.paypal));
+  if (venmoError) errors.venmo = venmoError;
+  if (cashappError) errors.cashapp = cashappError;
+  if (paypalError) errors.paypal = paypalError;
+
   return errors;
 }
 
@@ -88,4 +107,15 @@ export function toCarRow(userId: string, values: ProfileFormValues) {
     mpg: Number(values.mpg),
     seats: Number(values.seats),
   };
+}
+
+// Payment handles row, or null if every handle is blank.
+export function toPaymentRow(userId: string, values: ProfileFormValues) {
+  const row = {
+    user_id: userId,
+    venmo_username: cleanHandle(values.venmo) || null,
+    cashapp_cashtag: cleanHandle(values.cashapp) || null,
+    paypal_username: cleanHandle(values.paypal) || null,
+  };
+  return row.venmo_username || row.cashapp_cashtag || row.paypal_username ? row : null;
 }

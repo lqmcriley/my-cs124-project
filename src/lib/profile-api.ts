@@ -1,7 +1,7 @@
 // Saving the profile form to Supabase: photo upload, profile row, and car row.
 
 import { supabase } from './supabase';
-import { ProfileFormValues, toCarRow, toProfileRow } from './profile-form';
+import { ProfileFormValues, toCarRow, toPaymentRow, toProfileRow } from './profile-form';
 
 export type PickedPhoto = { uri: string; mimeType: string };
 
@@ -39,4 +39,10 @@ export async function saveProfile(
     const { error } = await supabase.from('cars').delete().eq('owner_id', userId);
     if (error) throw new Error(`Couldn't remove your car: ${error.message}`);
   }
+
+  const paymentRow = toPaymentRow(userId, values);
+  const { error: paymentError } = paymentRow
+    ? await supabase.from('payment_methods').upsert(paymentRow)
+    : await supabase.from('payment_methods').delete().eq('user_id', userId);
+  if (paymentError) throw new Error(`Couldn't save your payment handles: ${paymentError.message}`);
 }

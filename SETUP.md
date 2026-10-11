@@ -25,7 +25,7 @@ Venmo needs no developer account. The app just opens each rider's own Venmo app.
 ### 2a. Create the project
 
 1. Go to <https://supabase.com> and click **Start your project**.
-2. **Sign up with your `@illinois.edu` email.** This matters: Supabase's free built-in email sender only delivers to people on your Supabase team. If you sign up with that email, your login codes will reach you. If you already have an account with another email, see step 2e.
+2. Sign up with any email (your `@illinois.edu` is easiest).
 3. Click **New project**:
    - **Name:** `halfsies`
    - **Database password:** click *Generate*, then save it in a password manager. You won't need it in the app.
@@ -56,12 +56,27 @@ Venmo needs no developer account. The app just opens each rider's own Venmo app.
 
 Each later phase adds one new migration file. Run them in filename order.
 
-### 2d. Send a 6-digit code instead of a magic link
+### 2d. Connect an email service (Resend)
 
-By default Supabase emails a clickable link. We want a code you can type.
+Supabase's built-in email sender only allows **2 emails per hour**, and it **won't let you edit the email templates**. So connect a free email service first.
+
+1. Sign up at <https://resend.com/signup> **using your `@illinois.edu` email**. Until you verify a domain you own, Resend only delivers to the address you signed up with, which is all you need for testing.
+2. In Resend, go to **API Keys → Create API Key**, name it `halfsies`, and copy the key (starts with `re_`).
+3. In Supabase, go to **Authentication → Emails → Set up SMTP** (button at the top right), turn on **Enable custom SMTP**, and enter:
+   - Sender email: `onboarding@resend.dev`
+   - Sender name: `Halfsies`
+   - Host: `smtp.resend.com`
+   - Port: `465`
+   - Username: `resend`
+   - Password: your `re_…` key
+4. Click **Save**. You can now send about 30 emails per hour (**Authentication → Rate Limits**).
+
+### 2e. Send a 6-digit code instead of a magic link
+
+By default Supabase emails a clickable link. We want a code you can type. The templates are only editable after step 2d.
 
 1. Go to **Authentication → Emails** (email templates).
-2. Open the **Magic Link** template. Set the subject to `Your Halfsies code` and replace the body with:
+2. Open the **Magic Link** template. Set the subject to `Your Halfsies code`, click **Source**, and replace the body with:
    ```html
    <h2>Your Halfsies sign-in code</h2>
    <p>Enter this code in the app:</p>
@@ -72,13 +87,9 @@ By default Supabase emails a clickable link. We want a code you can type.
 3. Do the same for the **Confirm signup** template. Brand-new users get this one on their first sign-in.
 4. Go to **Authentication → Sign In / Providers → Email**. Make sure **Email** is enabled and **Email OTP Length** is `6`.
 
-### 2e. (Only if you signed up with a non-Illinois email)
+### Good to know: who can get codes
 
-Go to **Organization settings → Team → Invite** and invite your `@illinois.edu` address. Accept the invite from that inbox. Now the built-in sender will deliver codes to it.
-
-### Good to know: email limits
-
-The built-in sender allows only **2 emails per hour**, and only to team members. That's fine for testing Phase 1 yourself. Before friends or classmates try the app, set up a real email service (Part 4).
+With Resend's free setup above, only **your own** email receives codes. Before friends or classmates try the app, verify a domain in Resend (Part 4).
 
 ---
 
@@ -97,12 +108,12 @@ The map itself needs no key in Expo Go. iPhone uses Apple Maps, and Android uses
 
 ---
 
-## Part 4: Real email sending (before other students use it)
+## Part 4: Email for everyone (before other students use it)
 
-1. Create a free account at <https://resend.com>.
-2. Resend's free tier only sends to your own address until you verify a domain you own (for example, a cheap `halfsies.app`-style domain). Follow their **Domains** guide.
-3. In Supabase, go to **Authentication → Emails → SMTP Settings**, enable custom SMTP, and paste Resend's host, port, username and password.
-4. Raise the limit under **Authentication → Rate Limits** (e.g. 100 emails per hour).
+1. Buy a cheap domain (about $10/year, e.g. a `halfsies.app`-style name).
+2. In Resend, open **Domains → Add Domain** and follow the guide to verify it.
+3. In Supabase, go to **Authentication → Emails → SMTP Settings** and change **Sender email** to an address on your domain, e.g. `login@yourdomain.com`.
+4. Raise the limit under **Authentication → Rate Limits** if needed (e.g. 100 emails per hour).
 
 ---
 
@@ -144,7 +155,8 @@ After editing `.env`, stop the server (Ctrl+C) and start it again.
 | Problem | Fix |
 | --- | --- |
 | Red screen: "Missing Supabase keys" | Fill in `.env`, then restart `npx expo start`. |
-| No code email | Check spam. Make sure your email is on the Supabase team (2e) and you haven't hit 2 emails per hour. Check **Authentication → Logs** in Supabase. |
-| The email has a link, not a code | Redo step 2d for both templates. |
+| No code email | Check spam. Make sure Resend is connected (2d) and you're using the email you signed up to Resend with. Check **Authentication → Logs** in Supabase. |
+| "email rate limit exceeded" | The built-in sender's 2-per-hour limit. Connect Resend (2d) or wait an hour. |
+| The email has a link, not a code | Do step 2e for both templates (needs 2d first). |
 | "Couldn't save your profile… row-level security" | The migration didn't fully run. Re-run step 2c. |
 | QR code won't load on campus Wi-Fi | Use `npx expo start --tunnel`. |

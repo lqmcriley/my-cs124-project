@@ -1,7 +1,8 @@
 // The Halfsies logo: a circle split in half (orange + navy), like a ride split two ways.
 
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks/use-theme';
 
 export function Logo({ size = 96 }: { size?: number }) {
@@ -32,8 +33,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   wordmark: {
-    fontSize: 40,
-    fontWeight: '900',
-    letterSpacing: -1,
+    fontSize: 34,
+    fontWeight: '700',
+    letterSpacing: -0.8,
   },
 });

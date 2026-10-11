@@ -9,7 +9,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
-import { Colors } from '@/constants/theme';
+import { Colors, FontFamily } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
 
@@ -53,7 +53,12 @@ function RootNavigator() {
         },
       }}>
       <StatusBar style="auto" />
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          headerTitleStyle: { fontFamily: FontFamily, fontWeight: '600' },
+          headerBackTitleStyle: { fontFamily: FontFamily },
+        }}>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" />
         </Stack.Protected>
@@ -64,6 +69,9 @@ function RootNavigator() {
 
         <Stack.Protected guard={signedIn && hasProfile}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="trip/[id]" options={{ headerShown: true, title: 'Trip details', headerBackTitle: 'Back' }} />
+          <Stack.Screen name="edit-trip/[id]" options={{ headerShown: true, title: 'Edit trip', presentation: 'modal' }} />
+          <Stack.Screen name="request-seat/[id]" options={{ headerShown: true, title: 'Request a seat', presentation: 'modal' }} />
           <Stack.Screen
             name="edit-profile"
             options={{ headerShown: true, title: 'Edit profile', presentation: 'modal' }}

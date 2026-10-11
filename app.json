@@ -40,7 +40,8 @@
           "photosPermission": "Halfsies uses your photos so you can add a profile picture.",
           "cameraPermission": "Halfsies uses your camera so you can take a profile picture."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

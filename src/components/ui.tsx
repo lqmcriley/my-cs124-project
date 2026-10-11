@@ -1,34 +1,55 @@
 // Small building blocks used on every screen. They all read colors from
 // useTheme(), so light and dark mode work automatically.
 
-import { ReactNode } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { ReactElement, ReactNode } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  RefreshControlProps,
   ScrollView,
   StyleProp,
   StyleSheet,
-  Text,
+  Text as RNText,
   TextInput,
   TextInputProps,
+  TextProps,
   TextStyle,
   View,
   ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Radius, Spacing, TapTarget } from '@/constants/theme';
+import { FontFamily, Radius, Spacing, TapTarget } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+// Use this instead of React Native's Text so every word uses the app font.
+export function Text({ style, ...props }: TextProps) {
+  return <RNText {...props} style={[{ fontFamily: FontFamily }, style]} />;
+}
+
 // A full screen that scrolls and moves out of the keyboard's way.
-export function Screen({ children, edges }: { children: ReactNode; edges?: ('top' | 'bottom')[] }) {
+export function Screen({
+  children,
+  edges,
+  refreshControl,
+}: {
+  children: ReactNode;
+  edges?: ('top' | 'bottom')[];
+  refreshControl?: ReactElement<RefreshControlProps>; // pull-to-refresh
+}) {
+  // Tab screens skip the bottom safe area; leave room for the floating tab bar instead.
+  const insideTabs = edges !== undefined && !edges.includes('bottom');
   const colors = useTheme();
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={edges ?? ['top', 'bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.screenContent} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.screenContent, insideTabs && { paddingBottom: 120 }]}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={refreshControl}>
           {children}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -120,6 +141,7 @@ export function TextField({ label, hint, error, style, ...inputProps }: TextFiel
           styles.input,
           {
             color: colors.text,
+            fontFamily: FontFamily,
             backgroundColor: colors.inputBackground,
             borderColor: error ? colors.danger : colors.border,
           },
@@ -133,13 +155,25 @@ export function TextField({ label, hint, error, style, ...inputProps }: TextFiel
 }
 
 // A rounded, tappable option. Use a row of these to pick one choice.
-export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+export function Chip({
+  label,
+  selected,
+  onPress,
+  icon,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  icon?: keyof typeof Ionicons.glyphMap;
+}) {
   const colors = useTheme();
+  const textColor = selected ? colors.onPrimary : colors.text;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
+      hitSlop={4}
       style={[
         styles.chip,
         {
@@ -147,7 +181,8 @@ export function Chip({ label, selected, onPress }: { label: string; selected: bo
           borderColor: selected ? colors.primary : colors.border,
         },
       ]}>
-      <Text style={[styles.chipText, { color: selected ? colors.onPrimary : colors.text }]}>{label}</Text>
+      {icon && <Ionicons name={icon} size={18} color={textColor} />}
+      <Text style={[styles.chipText, { color: textColor }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -166,48 +201,73 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   heading: {
-    fontSize: 28,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   label: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
   },
   body: {
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 21,
   },
   small: {
-    fontSize: 14,
+    fontSize: 13,
   },
   button: {
     minHeight: TapTarget,
-    borderRadius: Radius.pill,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.lg,
   },
   buttonText: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
   },
   input: {
     minHeight: TapTarget,
     borderWidth: 1,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
-    fontSize: 17,
+    fontSize: 16,
   },
   chip: {
-    minHeight: 44,
-    paddingHorizontal: Spacing.md,
+    minHeight: 36,
+    paddingHorizontal: 14,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   chipText: {
-    fontSize: 15,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  checkbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    minHeight: 44,
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    fontSize: 13,
     fontWeight: '600',
+  },
+  iconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
   card: {
     borderRadius: Radius.lg,
@@ -216,3 +276,40 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
 });
+
+// A line of text with a small icon in front, e.g. a trip detail or a profile fact.
+export function IconRow({ icon, text, muted }: { icon: keyof typeof Ionicons.glyphMap; text: string; muted?: boolean }) {
+  const colors = useTheme();
+  return (
+    <View style={styles.iconRow}>
+      <Ionicons name={icon} size={18} color={muted ? colors.textSecondary : colors.primary} />
+      <Text style={[styles.body, { color: muted ? colors.textSecondary : colors.text, flex: 1 }]}>{text}</Text>
+    </View>
+  );
+}
+
+// A tappable checkbox with a label.
+export function Checkbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  const colors = useTheme();
+  return (
+    <Pressable
+      onPress={() => onChange(!checked)}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked }}
+      style={styles.checkbox}>
+      <Ionicons name={checked ? 'checkbox' : 'square-outline'} size={24} color={checked ? colors.primary : colors.textSecondary} />
+      <Text style={[styles.body, { color: colors.text, flex: 1 }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+// A small colored label, e.g. a request's status.
+export function Badge({ label, tone }: { label: string; tone: 'waiting' | 'good' | 'bad' | 'neutral' }) {
+  const colors = useTheme();
+  const color = { waiting: colors.primary, good: colors.success, bad: colors.danger, neutral: colors.textSecondary }[tone];
+  return (
+    <View style={[styles.badge, { borderColor: color }]}>
+      <Text style={[styles.badgeText, { color }]}>{label}</Text>
+    </View>
+  );
+}

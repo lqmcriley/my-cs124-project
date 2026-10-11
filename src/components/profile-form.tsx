@@ -15,8 +15,8 @@ import { useAuth } from '@/providers/auth-provider';
 
 export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onSaved?: () => void }) {
   const colors = useTheme();
-  const { session, profile, car, refreshProfile } = useAuth();
-  const [values, setValues] = useState<ProfileFormValues>(() => initialFormValues(profile, car));
+  const { session, profile, car, payment, refreshProfile } = useAuth();
+  const [values, setValues] = useState<ProfileFormValues>(() => initialFormValues(profile, car, payment));
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
   const [errors, setErrors] = useState<ProfileFormErrors>({});
   const [saveError, setSaveError] = useState('');
@@ -116,8 +116,8 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
 
       <Label>In the car, I&apos;m usually…</Label>
       <View style={styles.chipRow}>
-        <Chip label="🤫 Quiet ride" selected={values.chatPreference === 'quiet'} onPress={() => set('chatPreference', 'quiet')} />
-        <Chip label="💬 Down to talk" selected={values.chatPreference === 'talk'} onPress={() => set('chatPreference', 'talk')} />
+        <Chip label="Quiet ride" icon="volume-mute-outline" selected={values.chatPreference === 'quiet'} onPress={() => set('chatPreference', 'quiet')} />
+        <Chip label="Down to talk" icon="chatbubbles-outline" selected={values.chatPreference === 'talk'} onPress={() => set('chatPreference', 'talk')} />
       </View>
 
       {/* Car */}
@@ -187,6 +187,39 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
             <Body muted>MPG is used to work out a fair gas split. Seats don&apos;t count you, the driver.</Body>
           </View>
         )}
+      </Card>
+
+      {/* Payment handles */}
+      <Card>
+        <Label>Get paid (optional)</Label>
+        <Body muted>Add any you use. Riders on your trips get a one-tap pay button. Nobody else sees these.</Body>
+        <TextField
+          label="Venmo username"
+          placeholder="alma-mater"
+          value={values.venmo}
+          onChangeText={(t) => set('venmo', t)}
+          autoCapitalize="none"
+          autoCorrect={false}
+          error={errors.venmo}
+        />
+        <TextField
+          label="Cash App $cashtag"
+          placeholder="AlmaMater"
+          value={values.cashapp}
+          onChangeText={(t) => set('cashapp', t)}
+          autoCapitalize="none"
+          autoCorrect={false}
+          error={errors.cashapp}
+        />
+        <TextField
+          label="PayPal.me name"
+          placeholder="almamater"
+          value={values.paypal}
+          onChangeText={(t) => set('paypal', t)}
+          autoCapitalize="none"
+          autoCorrect={false}
+          error={errors.paypal}
+        />
       </Card>
 
       <ErrorText>{saveError}</ErrorText>

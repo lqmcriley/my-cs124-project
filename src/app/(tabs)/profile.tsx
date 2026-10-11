@@ -4,12 +4,12 @@ import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
-import { Body, Button, Card, Heading, Label, Screen } from '@/components/ui';
+import { Body, Button, Card, Heading, IconRow, Label, Screen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/providers/auth-provider';
 
 export default function ProfileScreen() {
-  const { session, profile, car, signOut } = useAuth();
+  const { session, profile, car, payment, signOut } = useAuth();
   if (!profile) return null;
 
   const details = [profile.year, profile.major].filter(Boolean).join(' · ');
@@ -26,7 +26,11 @@ export default function ProfileScreen() {
       <Card>
         <Label>About</Label>
         <Body>{profile.bio || 'No bio yet.'}</Body>
-        <Body muted>{profile.chat_preference === 'quiet' ? '🤫 Prefers a quiet ride' : '💬 Down to talk'}</Body>
+        <IconRow
+          muted
+          icon={profile.chat_preference === 'quiet' ? 'volume-mute-outline' : 'chatbubbles-outline'}
+          text={profile.chat_preference === 'quiet' ? 'Prefers a quiet ride' : 'Down to talk'}
+        />
       </Card>
 
       <Card>
@@ -43,6 +47,22 @@ export default function ProfileScreen() {
         ) : (
           <Body muted>No car added. Add one in Edit profile if you want to drive.</Body>
         )}
+      </Card>
+
+      <Card>
+        <Label>Payment</Label>
+        {payment ? (
+          <>
+            {payment.venmo_username ? <IconRow icon="wallet-outline" text={`Venmo @${payment.venmo_username}`} /> : null}
+            {payment.cashapp_cashtag ? <IconRow icon="cash-outline" text={`Cash App $${payment.cashapp_cashtag}`} /> : null}
+            {payment.paypal_username ? <IconRow icon="logo-paypal" text={`PayPal.me/${payment.paypal_username}`} /> : null}
+          </>
+        ) : (
+          <Body muted>Add Venmo, Cash App or PayPal in Edit profile so riders can pay you in one tap.</Body>
+        )}
+        <Body muted style={{ fontSize: 14 }}>
+          Private: only riders on your trips will see these, when it&apos;s time to pay.
+        </Body>
       </Card>
 
       <Button title="Edit profile" variant="secondary" onPress={() => router.push('/edit-profile')} />

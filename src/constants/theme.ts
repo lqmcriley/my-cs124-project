@@ -2,15 +2,17 @@
 // Brand: warm orange (#FF6B35) + deep navy (#13294B).
 // Buttons use navy text on orange because white on this orange is too faint to read easily.
 
+import { Platform } from 'react-native';
+
 export const Colors = {
   light: {
     primary: '#FF6B35',
     onPrimary: '#13294B', // text drawn on top of orange
     text: '#13294B',
     textSecondary: '#5B6B82',
-    background: '#FFF8F3',
+    background: '#F5F5F7', // neutral light gray (not peach)
     card: '#FFFFFF',
-    border: '#EADFD6',
+    border: '#E3E5EA',
     inputBackground: '#FFFFFF',
     danger: '#C62828',
     success: '#2E7D32',
@@ -40,10 +42,14 @@ export const Spacing = {
 } as const;
 
 export const Radius = {
-  md: 12,
-  lg: 20,
-  pill: 999,
+  md: 12, // buttons, inputs
+  lg: 16, // cards
+  pill: 999, // chips
 } as const;
 
-// Minimum height for anything tappable (Apple recommends at least 44).
-export const TapTarget = 52;
+// Minimum height for buttons and fields (Apple recommends at least 44).
+export const TapTarget = 46;
+
+// Helvetica Neue is built into iPhones. Android has no Helvetica, so it uses
+// its standard system font, which looks very close.
+export const FontFamily = Platform.select({ ios: 'Helvetica Neue', default: undefined });

@@ -68,6 +68,9 @@ export type Trip = {
   late_cancel_count: number; // riders who cancelled within 24 hours (they still owe their share)
   cancelled_at: string | null;
   driver_late_cancel: boolean;
+  // Long trips (8+ hours): straight through or overnight. Optional for older databases.
+  long_trip_plan?: 'straight' | 'overnight' | null;
+  overnight_stop?: string | null;
 };
 
 // A trip plus the driver's public profile and car, as loaded for cards and the detail screen.

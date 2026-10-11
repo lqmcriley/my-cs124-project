@@ -139,3 +139,16 @@ export async function reportDriverNoShow(tripId: string, noShow: boolean): Promi
   const { error } = await supabase.rpc('report_driver_no_show', { p_trip_id: tripId, p_no_show: noShow });
   if (error) throw new Error(error.message);
 }
+
+export type SplitRow = { request_id: string; rider_miles: number | null; is_me: boolean };
+
+// How far every paying rider rides (no names), for the fair gas split.
+// Only returned to the driver and paying riders on this trip.
+export async function fetchTripSplit(tripId: string): Promise<SplitRow[]> {
+  const { data, error } = await supabase.rpc('trip_split', { p_trip_id: tripId });
+  if (error) {
+    console.warn("Couldn't load the gas split", error.message);
+    return [];
+  }
+  return data as SplitRow[];
+}

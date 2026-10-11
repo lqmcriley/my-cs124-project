@@ -24,8 +24,8 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { terminalArrival } from '@/lib/airport';
 import {
-  amountOwed,
   isUpcoming,
+  fairSplit,
   isWithin24Hours,
   payingRiders,
   paymentNote,
@@ -38,12 +38,14 @@ import {
   cancelTrip,
   fetchMyRequest,
   fetchPaymentHandles,
+  fetchTripSplit,
   fetchRequestsForTrip,
   fetchTripRiders,
   reportDriverNoShow,
   respondToRequest,
   setNoShow,
   setRequestPaid,
+  SplitRow,
 } from '@/lib/booking-api';
 import { LUGGAGE_OPTIONS } from '@/lib/config';
 import { firstName, formatDeparture, formatDuration, formatFlex, formatMoney } from '@/lib/format';
@@ -58,6 +60,7 @@ import { fetchTripContacts, TripContact } from '@/lib/safety-api';
 import { formatPhone } from '@/lib/phone';
 import { alongTheWay, StopParams, stopFromParams, stopToParams } from '@/lib/trip-search';
 import { fetchTrip } from '@/lib/trips-api';
+import type { Stretch } from '@/lib/pricing';
 import type { RequestWithRider, TripRequest, TripRider, TripWithDriver } from '@/lib/types';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -71,13 +74,14 @@ type Loaded = {
   ratings: Record<string, RatingSummary>; // star ratings for the same people
   contacts: TripContact[]; // phone numbers, only for people in the car
   reviewedCount: number; // how many people you've already rated on this trip
+  split: SplitRow[]; // how far each paying rider rides (riders only; drivers use requests)
   loadedAt: Date; // "now" for deciding if the trip has left
 };
 
 async function loadTripPage(tripId: string, userId: string): Promise<Loaded> {
   const trip = await fetchTrip(tripId);
   const loadedAt = new Date();
-  if (!trip) return { trip: null, riders: [], requests: [], myRequest: null, handles: null, reliability: {}, ratings: {}, contacts: [], reviewedCount: 0, loadedAt };
+  if (!trip) return { trip: null, riders: [], requests: [], myRequest: null, handles: null, reliability: {}, ratings: {}, contacts: [], reviewedCount: 0, split: [], loadedAt };
   const isDriver = trip.driver_id === userId;
   const [riders, requests, myRequest] = await Promise.all([
     fetchTripRiders(tripId),
@@ -87,14 +91,15 @@ async function loadTripPage(tripId: string, userId: string): Promise<Loaded> {
   const owes = myRequest !== null && (myRequest.status === 'approved' || myRequest.late_cancel);
   const inCar = isDriver || myRequest?.status === 'approved';
   const people = [trip.driver_id, ...requests.map((request) => request.rider_id), ...riders.map((rider) => rider.rider_id)];
-  const [handles, reliability, ratings, contacts, myReviews] = await Promise.all([
+  const [handles, reliability, ratings, contacts, myReviews, split] = await Promise.all([
     owes ? fetchPaymentHandles(tripId) : Promise.resolve(null),
     fetchReliability(people),
     fetchRatingSummary(people),
     inCar ? fetchTripContacts(tripId) : Promise.resolve([]),
     inCar ? fetchMyReviewsForTrip(tripId, userId) : Promise.resolve([]),
+    owes ? fetchTripSplit(tripId) : Promise.resolve([]),
   ]);
-  return { trip, riders, requests, myRequest, handles, reliability, ratings, contacts, reviewedCount: myReviews.length, loadedAt };
+  return { trip, riders, requests, myRequest, handles, reliability, ratings, contacts, reviewedCount: myReviews.length, split, loadedAt };
 }
 
 export default function TripDetailScreen() {
@@ -166,7 +171,7 @@ export default function TripDetailScreen() {
       </Screen>
     );
   }
-  const { trip, riders, requests, myRequest, handles, reliability, ratings, contacts, reviewedCount, loadedAt } = data;
+  const { trip, riders, requests, myRequest, handles, reliability, ratings, contacts, reviewedCount, split, loadedAt } = data;
   if (!trip) {
     return (
       <Screen edges={['bottom']}>
@@ -200,6 +205,13 @@ export default function TripDetailScreen() {
   const canReport = departed && loadedAt.getTime() - departure.getTime() < 7 * 24 * 60 * 60 * 1000;
   const canCancelTrip = isMyTrip && isUpcoming(trip, loadedAt);
   const inCar = isMyTrip || myRequest?.status === 'approved';
+  // The fair gas split: each stretch of road shared by whoever is in the car for it.
+  const legs = isMyTrip
+    ? payingRequests.map((request) => ({ id: request.id, miles: request.rider_miles }))
+    : split.map((row) => ({ id: row.request_id, miles: row.rider_miles }));
+  const gasSplit = fairSplit(trip, legs);
+  const myShare = myRequest ? (gasSplit.shares[myRequest.id] ?? 0) : 0;
+  const myStretches = myRequest ? gasSplit.stretches.filter((stretch) => stretch.riderIds.includes(myRequest.id)) : [];
   const along = stop && !isMyTrip ? alongTheWay(trip, stop) : null;
 
   return (
@@ -332,17 +344,18 @@ export default function TripDetailScreen() {
                 : `After the ride, you'll pay your share right here, about ${formatMoney(riderEstimate(trip, myRequest.rider_miles, true).now)} based on who's riding now.`}
             </Body>
           ) : myRequest.paid_at ? (
-            <IconRow icon="checkmark-circle" text={`Paid. ${driverName} marked your ${formatMoney(amountOwed(trip, myRequest))} as received.`} />
+            <IconRow icon="checkmark-circle" text={`Paid. ${driverName} marked your ${formatMoney(myShare)} as received.`} />
           ) : (
             <>
               <View style={styles.amountRow}>
-                <Text style={[styles.amount, { color: colors.text }]}>{formatMoney(amountOwed(trip, myRequest))}</Text>
+                <Text style={[styles.amount, { color: colors.text }]}>{formatMoney(myShare)}</Text>
                 <Body muted>your share of the gas</Body>
               </View>
+              <StretchBreakdown stretches={myStretches} />
               <Body muted style={{ fontSize: 13 }}>
-                Split {payingRiders(trip) + 1} ways{myRequest.rider_miles ? `, for your ${myRequest.rider_miles} miles` : ''}. {driverName} will mark you paid.
+                Each stretch of road is split between whoever was in the car for it. {driverName} will mark you paid.
               </Body>
-              <PayButtons handles={handles} amount={amountOwed(trip, myRequest)} note={paymentNote(trip)} driverName={driverName} />
+              <PayButtons handles={handles} amount={myShare} note={paymentNote(trip)} driverName={driverName} />
               {myRequest.status === 'approved' && canReport && (
                 <Button
                   title={`${driverName} didn't show up?`}
@@ -371,7 +384,7 @@ export default function TripDetailScreen() {
         <Card>
           <Label>Payments</Label>
           <Body muted style={{ fontSize: 13 }}>
-            Gas split {payingRiders(trip) + 1} ways. Tap Mark paid when the money arrives. If a rider never came, tap No-show.
+            Each stretch of road is split between whoever was in the car for it, including you. Tap Mark paid when the money arrives. If a rider never came, tap No-show.
           </Body>
           {payingRequests.map((request) => (
             <View key={request.id} style={{ gap: Spacing.xs }}>
@@ -380,7 +393,7 @@ export default function TripDetailScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.text, fontWeight: '600' }}>{request.rider.full_name}</Text>
                   <Body muted style={{ fontSize: 14 }}>
-                    {formatMoney(amountOwed(trip, request))}
+                    {formatMoney(gasSplit.shares[request.id] ?? 0)}
                     {request.paid_at ? ' · Paid' : ' · Not paid yet'}
                     {request.late_cancel ? ' · Late cancel' : ''}
                     {request.no_show ? ' · No-show' : ''}
@@ -704,6 +717,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
   },
+  stretches: {
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+    gap: 4,
+  },
+  stretchRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
   contactRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -777,5 +800,23 @@ function ContactCard({ contacts, hasOwnPhone }: { contacts: TripContact[]; hasOw
       )}
       {!hasOwnPhone && <Body muted style={{ fontSize: 13 }}>Add your number in Edit profile so the others can reach you too.</Body>}
     </Card>
+  );
+}
+
+// "Miles 0–100 · 3 people · $3.33" for each stretch of road this rider was in the car for.
+function StretchBreakdown({ stretches }: { stretches: Stretch[] }) {
+  const colors = useTheme();
+  if (stretches.length <= 1) return null; // one stretch = a simple even split, nothing to explain
+  return (
+    <View style={[styles.stretches, { borderColor: colors.border }]}>
+      {stretches.map((stretch) => (
+        <View key={stretch.fromMile} style={styles.stretchRow}>
+          <Text style={{ color: colors.textSecondary, fontSize: 14, flex: 1 }}>
+            Miles {Math.round(stretch.fromMile)}–{Math.round(stretch.toMile)} · {stretch.people} people
+          </Text>
+          <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}>{formatMoney(stretch.perPerson)}</Text>
+        </View>
+      ))}
+    </View>
   );
 }

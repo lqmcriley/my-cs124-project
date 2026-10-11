@@ -126,3 +126,22 @@ describe('editing', () => {
     expect(update).not.toHaveProperty('mpg');
   });
 });
+
+describe('long trips', () => {
+  const long = { ...valid, route: { miles: 965, minutes: 900, encodedPolyline: 'x', points: [] } };
+
+  it('saves the overnight plan for long drives', () => {
+    expect(toTripRow('me', car, { ...long, longTripPlan: 'overnight', overnightStop: ' Youngstown, OH ' })).toMatchObject({
+      long_trip_plan: 'overnight',
+      overnight_stop: 'Youngstown, OH',
+    });
+    expect(toTripRow('me', car, { ...long, longTripPlan: 'straight', overnightStop: 'leftover' })).toMatchObject({
+      long_trip_plan: 'straight',
+      overnight_stop: null,
+    });
+  });
+
+  it('leaves normal trips without a plan', () => {
+    expect(toTripRow('me', car, valid)).toMatchObject({ long_trip_plan: null, overnight_stop: null });
+  });
+});

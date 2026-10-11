@@ -76,3 +76,56 @@ export function tripPriceSummary(input: TripCostInput & { seatsOffered: number; 
   const ifFull = tripPrice({ ...input, riders: input.seatsOffered });
   return { ifYouJoin, ifFull };
 }
+
+// ---------------------------------------------------------------------------
+// Splitting gas fairly when riders get off at different places.
+//
+// The route is cut into stretches at each drop-off. Each stretch's gas is split
+// between whoever is in the car for that stretch (riders + driver). A rider pays
+// the sum of their stretches. Example (300 mi, $30 of gas, Ana off at mile 100):
+//   miles 0–100:   driver, Ana, Ben  -> $10 / 3 = $3.33 each
+//   miles 100–300: driver, Ben       -> $20 / 2 = $10.00 each
+//   Ana pays $3.33, Ben pays $13.33, the driver covers their own $13.33.
+// The IRS cap applies to every stretch. Totals round down to the cent.
+// ---------------------------------------------------------------------------
+
+export type RideLeg = { id: string; miles: number | null }; // null = the whole way
+
+export type Stretch = {
+  fromMile: number;
+  toMile: number;
+  people: number; // riders in the car + driver
+  riderIds: string[];
+  perPerson: number; // what each person in the car pays for this stretch (not rounded)
+};
+
+export function splitGasByRide(input: { routeMiles: number; mpg: number; gasPrice: number; riders: RideLeg[] }): {
+  shares: Record<string, number>;
+  stretches: Stretch[];
+} {
+  const { routeMiles, mpg, gasPrice } = input;
+  const riders = input.riders.map((rider) => ({
+    id: rider.id,
+    miles: Math.min(Math.max(rider.miles ?? routeMiles, 0), routeMiles),
+  }));
+  const stops = [...new Set([0, ...riders.map((rider) => rider.miles), routeMiles])].sort((a, b) => a - b);
+
+  const raw: Record<string, number> = Object.fromEntries(riders.map((rider) => [rider.id, 0]));
+  const stretches: Stretch[] = [];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const fromMile = stops[i];
+    const toMile = stops[i + 1];
+    const inCar = riders.filter((rider) => rider.miles >= toMile - 1e-9);
+    if (inCar.length === 0) continue; // the driver is alone; nothing to split
+    const people = inCar.length + 1;
+    const miles = toMile - fromMile;
+    const fair = gasCost(miles, mpg, gasPrice) / people;
+    const cap = (miles * IRS_MILEAGE_RATE) / people;
+    const perPerson = Math.min(fair, cap);
+    for (const rider of inCar) raw[rider.id] += perPerson;
+    stretches.push({ fromMile, toMile, people, riderIds: inCar.map((rider) => rider.id), perPerson });
+  }
+
+  const shares = Object.fromEntries(Object.entries(raw).map(([id, amount]) => [id, floorToCents(amount)]));
+  return { shares, stretches };
+}

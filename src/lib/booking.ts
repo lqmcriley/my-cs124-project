@@ -3,7 +3,7 @@
 // (The database checks the same rules again when a request is actually made.)
 
 import type { MyTrips } from './booking-api';
-import { riderShare } from './pricing';
+import { RideLeg, riderShare, splitGasByRide } from './pricing';
 import type { RequestStatus, Trip, TripRequest } from './types';
 
 // Riders who split the gas: everyone approved, plus anyone who cancelled
@@ -42,15 +42,12 @@ export function requestBlocker(trip: Trip, userId: string, myRequest: TripReques
   return null;
 }
 
-// What a rider owes once the trip has left: their miles, split between the
-// paying riders (approved + late cancellers) and the driver.
-export function amountOwed(trip: Trip, request: Pick<TripRequest, 'rider_miles'>): number {
-  return riderShare({
-    riderMiles: request.rider_miles ?? trip.route_miles,
-    mpg: trip.mpg,
-    gasPrice: trip.gas_price,
-    peopleInCar: payingRiders(trip) + 1,
-  });
+// What each paying rider owes once the trip has left. Everyone who pays a share
+// (approved riders and late cancellers) is a "leg": an id plus how far they ride
+// (null = the whole way). Each stretch of road is split between whoever is in the
+// car for it, so getting off early costs less and nobody covers anyone else.
+export function fairSplit(trip: Trip, legs: RideLeg[]) {
+  return splitGasByRide({ routeMiles: trip.route_miles, mpg: trip.mpg, gasPrice: trip.gas_price, riders: legs });
 }
 
 // The note that goes with a payment, e.g. "Hitch Illini gas: Illini Union → O'Hare, Sun, Oct 18".

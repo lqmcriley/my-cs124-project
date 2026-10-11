@@ -1,5 +1,5 @@
 import { IRS_MILEAGE_RATE } from '../config';
-import { floorToCents, gasCost, priceTable, riderShare, tripPrice, tripPriceSummary } from '../pricing';
+import { floorToCents, gasCost, priceTable, riderShare, splitGasByRide, tripPrice, tripPriceSummary } from '../pricing';
 
 describe('gasCost', () => {
   it('is miles ÷ mpg × gas price', () => {
@@ -89,5 +89,52 @@ describe('floorToCents', () => {
   it('handles float noise', () => {
     expect(floorToCents(0.1 + 0.2)).toBe(0.3);
     expect(floorToCents(12.999)).toBe(12.99);
+  });
+});
+
+describe('splitGasByRide', () => {
+  // 300 miles, 30 MPG, $3/gal = $30 of gas, $0.10 a mile.
+  const trip = { routeMiles: 300, mpg: 30, gasPrice: 3 };
+
+  it('matches the simple split when everyone rides the whole way', () => {
+    const { shares } = splitGasByRide({ ...trip, riders: [{ id: 'a', miles: null }, { id: 'b', miles: null }] });
+    expect(shares).toEqual({ a: 10, b: 10 }); // $30 / 3 people
+    expect(shares.a).toBe(riderShare({ riderMiles: 300, mpg: 30, gasPrice: 3, peopleInCar: 3 }));
+  });
+
+  it('splits each stretch between whoever is in the car', () => {
+    const { shares, stretches } = splitGasByRide({ ...trip, riders: [{ id: 'ana', miles: 100 }, { id: 'ben', miles: null }] });
+    expect(shares).toEqual({ ana: 3.33, ben: 13.33 });
+    expect(stretches.map((s) => [s.fromMile, s.toMile, s.people])).toEqual([
+      [0, 100, 3],
+      [100, 300, 2],
+    ]);
+  });
+
+  it('never lets riders pay more than the gas, so the driver never profits', () => {
+    const { shares } = splitGasByRide({ ...trip, riders: [{ id: 'a', miles: 50 }, { id: 'b', miles: 175 }, { id: 'c', miles: null }] });
+    const ridersTotal = Object.values(shares).reduce((sum, amount) => sum + amount, 0);
+    expect(ridersTotal).toBeLessThan(30);
+    // The driver pays a share of every stretch, just like a rider who rode the whole way.
+    expect(30 - ridersTotal).toBeGreaterThanOrEqual(shares.c - 0.01);
+  });
+
+  it('charges someone who gets off earlier less than someone who rides farther', () => {
+    const { shares } = splitGasByRide({ ...trip, riders: [{ id: 'early', miles: 60 }, { id: 'later', miles: 240 }, { id: 'all', miles: null }] });
+    expect(shares.early).toBeLessThan(shares.later);
+    expect(shares.later).toBeLessThan(shares.all);
+  });
+
+  it('applies the IRS cap on every stretch', () => {
+    // 5 MPG and $9 gas would be $1.80/mile; the cap keeps each stretch at the IRS rate.
+    const { shares } = splitGasByRide({ routeMiles: 100, mpg: 5, gasPrice: 9, riders: [{ id: 'a', miles: 40 }, { id: 'b', miles: null }] });
+    const capA = (40 * IRS_MILEAGE_RATE) / 3;
+    const capB = (40 * IRS_MILEAGE_RATE) / 3 + (60 * IRS_MILEAGE_RATE) / 2;
+    expect(shares.a).toBe(floorToCents(capA));
+    expect(shares.b).toBe(floorToCents(capB));
+  });
+
+  it('treats drop-offs past the end as the whole way', () => {
+    expect(splitGasByRide({ ...trip, riders: [{ id: 'a', miles: 999 }] }).shares).toEqual({ a: 15 });
   });
 });

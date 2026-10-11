@@ -1,6 +1,7 @@
 // Rules for the "Post a trip" and "Edit trip" forms, kept separate from the screens so they're easy to test.
 
 import type { Parking } from './airport';
+import { isLongTrip, LongTripPlan } from './long-trip';
 import { DEFAULT_GAS_PRICE, MAX_GAS_PRICE, MIN_GAS_PRICE, Place, TRIP_NOTES_MAX_LENGTH } from './config';
 import type { Route } from './maps';
 import type { Car, Luggage, Trip } from './types';
@@ -22,6 +23,9 @@ export type TripFormValues = {
   parking: Parking;
   parkingLocation: string;
   shuttleMinutes: number;
+  // Long trips (only used when the drive is 8+ hours)
+  longTripPlan: LongTripPlan;
+  overnightStop: string;
 };
 
 export type TripFormErrors = Partial<Record<keyof TripFormValues, string>>;
@@ -43,6 +47,8 @@ export function emptyTripForm(car: Car): TripFormValues {
     parking: 'terminal',
     parkingLocation: '',
     shuttleMinutes: 20,
+    longTripPlan: 'overnight',
+    overnightStop: '',
   };
 }
 
@@ -70,6 +76,8 @@ export function tripFormFromTrip(trip: Trip): TripFormValues {
     parking: trip.parking,
     parkingLocation: trip.parking_location ?? '',
     shuttleMinutes: trip.parking === 'offsite' ? trip.shuttle_minutes : 20,
+    longTripPlan: trip.long_trip_plan ?? 'overnight',
+    overnightStop: trip.overnight_stop ?? '',
   };
 }
 
@@ -94,6 +102,8 @@ export function validateTripForm(values: TripFormValues, maxSeats: number, now: 
   }
 
   if (values.notes.length > TRIP_NOTES_MAX_LENGTH) errors.notes = `Keep notes under ${TRIP_NOTES_MAX_LENGTH} characters.`;
+
+  if (values.overnightStop.length > 100) errors.overnightStop = 'Keep the stop under 100 characters.';
 
   if (values.to?.isAirport) {
     if (values.flightNumber.trim().length > 10) errors.flightNumber = 'Flight numbers are 10 characters or fewer.';
@@ -120,6 +130,15 @@ function airportColumns(values: TripFormValues) {
     parking: offsite ? ('offsite' as const) : ('terminal' as const),
     parking_location: offsite ? values.parkingLocation.trim() : null,
     shuttle_minutes: offsite ? values.shuttleMinutes : 0,
+  };
+}
+
+// The long-trip columns. Normal-length trips get none.
+function longTripColumns(values: TripFormValues) {
+  const isLong = isLongTrip(values.route?.minutes);
+  return {
+    long_trip_plan: isLong ? values.longTripPlan : null,
+    overnight_stop: isLong && values.longTripPlan === 'overnight' ? values.overnightStop.trim() || null : null,
   };
 }
 
@@ -151,6 +170,7 @@ export function toTripRow(driverId: string, car: Car, values: TripFormValues) {
     gas_price: Math.round(Number(values.gasPrice) * 100) / 100,
     mpg: car.mpg,
     ...airportColumns(values),
+    ...longTripColumns(values),
   };
 }
 
@@ -164,5 +184,6 @@ export function toTripUpdate(values: TripFormValues) {
     luggage: values.luggage,
     notes: values.notes.trim() || null,
     ...airportColumns(values),
+    ...longTripColumns(values),
   };
 }

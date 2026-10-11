@@ -112,3 +112,11 @@ export type CarBodyType = (typeof CAR_BODY_TYPES)[number]['value'];
 export const ALONG_ROUTE_RADIUS_MILES = 12;
 // Ignore matches this close to the start (you'd just be getting off on campus).
 export const ALONG_ROUTE_MIN_MILES = 15;
+
+// Long trips: over this much driving, drivers say whether they're going
+// straight through or stopping overnight.
+export const LONG_TRIP_MINUTES = 8 * 60;
+// For arrival estimates: a short break every few hours, or a night's stop.
+export const BREAK_EVERY_MINUTES = 3 * 60;
+export const BREAK_MINUTES = 20;
+export const OVERNIGHT_STOP_HOURS = 10;

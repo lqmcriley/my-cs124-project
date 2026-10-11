@@ -1,4 +1,4 @@
-import { amountOwed, isWithin24Hours, payingRiders, paymentNote, requestBlocker, riderEstimate, splitMyTrips } from '../booking';
+import { fairSplit, isWithin24Hours, payingRiders, paymentNote, requestBlocker, riderEstimate, splitMyTrips } from '../booking';
 import type { RequestWithTrip, TripRequest, TripWithDriver } from '../types';
 
 const NOW = new Date('2026-10-10T12:00:00');
@@ -127,14 +127,17 @@ describe('splitMyTrips', () => {
   });
 });
 
-describe('amountOwed', () => {
+describe('fairSplit', () => {
+  const t = trip('t', '2026-10-09T09:00:00', { seats_booked: 2 }); // 150 mi, 30 MPG, $3.49 = $17.45 of gas
+
   it('splits between everyone who actually rode', () => {
     // 2 riders + driver = 3 people: $17.45 / 3 = 5.81
-    expect(amountOwed(trip('t', '2026-10-09T09:00:00', { seats_booked: 2 }), { rider_miles: null })).toBe(5.81);
+    expect(fairSplit(t, [{ id: 'a', miles: null }, { id: 'b', miles: null }]).shares).toEqual({ a: 5.81, b: 5.81 });
   });
 
-  it('is cheaper for a rider who got off early', () => {
-    expect(amountOwed(trip('t', '2026-10-09T09:00:00', { seats_booked: 2 }), { rider_miles: 75 })).toBe(2.9);
+  it('charges an early rider for their stretch, and the others fairly for the rest', () => {
+    // Miles 0–75: 3 people share $8.725 (2.908 each). Miles 75–150: 2 people share $8.725 (4.3625 each).
+    expect(fairSplit(t, [{ id: 'early', miles: 75 }, { id: 'all', miles: null }]).shares).toEqual({ early: 2.9, all: 7.27 });
   });
 });
 
@@ -150,9 +153,11 @@ describe('price lock (late cancels still pay)', () => {
   });
 
   it("keeps the remaining rider's price the same when someone bails late", () => {
+    // The late canceller still counts as a paying rider, so the split doesn't change.
     const before = trip('t', '2026-10-09T09:00:00', { seats_booked: 2 });
     const afterLateCancel = trip('t', '2026-10-09T09:00:00', { seats_booked: 1, late_cancel_count: 1 });
-    expect(amountOwed(afterLateCancel, { rider_miles: null })).toBe(amountOwed(before, { rider_miles: null }));
+    const legs = [{ id: 'stayed', miles: null }, { id: 'bailed late', miles: null }];
+    expect(fairSplit(afterLateCancel, legs).shares.stayed).toBe(fairSplit(before, legs).shares.stayed);
   });
 
   it('lets a new rider lower everyone\'s price after a late cancel', () => {

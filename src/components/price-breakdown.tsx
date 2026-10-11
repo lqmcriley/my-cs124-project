@@ -72,8 +72,9 @@ export function PriceBreakdown({ miles, mpg, gasPrice, seatsOffered, ridersBooke
         </Text>
       )}
       <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-        Gas is split evenly between everyone in the car, driver included. You pay based on how many people actually
-        ride, so the price can drop as others join. Drivers never make a profit.
+        Gas is split between everyone in the car, driver included, and the price drops as others join. If someone gets
+        off early, each stretch of road is split between whoever is in the car for it, so everyone pays their fair
+        share. Drivers never make a profit.
       </Text>
     </Card>
   );

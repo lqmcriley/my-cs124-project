@@ -1,15 +1,32 @@
 // Your profile: photo, details, car, plus Edit and Sign out.
 
-import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
+import { CarIllustration } from '@/components/car-illustration';
+import { ReliabilityBadge } from '@/components/reliability-badge';
+import { VibeMeters } from '@/components/vibes';
 import { Body, Button, Card, Heading, IconRow, Label, Screen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
+import type { Reliability } from '@/lib/reliability';
+import { fetchReliability } from '@/lib/reliability-api';
 import { useAuth } from '@/providers/auth-provider';
 
 export default function ProfileScreen() {
   const { session, profile, car, payment, signOut } = useAuth();
+  const [reliability, setReliability] = useState<Reliability | undefined>(undefined);
+  const userId = session?.user.id;
+
+  // Your own "Shows up X of Y trips", refreshed whenever you open this tab.
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      fetchReliability([userId]).then((result) => setReliability(result[userId]));
+    }, [userId]),
+  );
+
   if (!profile) return null;
 
   const details = [profile.year, profile.major].filter(Boolean).join(' · ');
@@ -21,26 +38,38 @@ export default function ProfileScreen() {
         <Heading>{profile.full_name}</Heading>
         {details ? <Body muted>{details}</Body> : null}
         <Body muted>{session?.user.email}</Body>
+        <ReliabilityBadge stats={reliability} />
       </View>
+
+      <Card>
+        <Label>Reliability</Label>
+        <Body muted>
+          Everyone sees how often you show up. Cancelling more than 24 hours before a trip is free. Later cancels and no-shows count
+          against you, so other students know who they can count on.
+        </Body>
+      </Card>
 
       <Card>
         <Label>About</Label>
         <Body>{profile.bio || 'No bio yet.'}</Body>
-        <IconRow
-          muted
-          icon={profile.chat_preference === 'quiet' ? 'volume-mute-outline' : 'chatbubbles-outline'}
-          text={profile.chat_preference === 'quiet' ? 'Prefers a quiet ride' : 'Down to talk'}
-        />
+      </Card>
+
+      <Card>
+        <Label>Vibe check</Label>
+        <VibeMeters profile={profile} />
       </Card>
 
       <Card>
         <Label>My car</Label>
         {car ? (
           <>
-            <Body>
+            <View style={{ alignItems: 'center' }}>
+              <CarIllustration color={car.color} width={220} />
+            </View>
+            <Body style={{ textAlign: 'center', fontWeight: '600' }}>
               {car.color} {car.make} {car.model}
             </Body>
-            <Body muted>
+            <Body muted style={{ textAlign: 'center' }}>
               Plate {car.plate} · {car.mpg} MPG · {car.seats} passenger {car.seats === 1 ? 'seat' : 'seats'}
             </Body>
           </>
@@ -65,8 +94,18 @@ export default function ProfileScreen() {
         </Body>
       </Card>
 
-      <Button title="Edit profile" variant="secondary" onPress={() => router.push('/edit-profile')} />
-      <Button title="Sign out" variant="ghost" onPress={signOut} />
+      <Button title="Edit profile" icon="create-outline" variant="secondary" onPress={() => router.push('/edit-profile')} />
+      <Button
+        title="Sign out"
+        icon="log-out-outline"
+        variant="danger"
+        onPress={() =>
+          Alert.alert('Sign out?', 'You can sign back in any time with your @illinois.edu email.', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Sign out', style: 'destructive', onPress: signOut },
+          ])
+        }
+      />
     </Screen>
   );
 }

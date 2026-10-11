@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { CAMPUS_CENTER } from '@/lib/config';
 import { formatDeparture, formatMoney } from '@/lib/format';
+import { payingRiders } from '@/lib/booking';
 import { tripPriceSummary } from '@/lib/pricing';
 import type { TripWithDriver } from '@/lib/types';
 
@@ -41,7 +42,7 @@ export function TripsMap({ trips }: { trips: TripWithDriver[] }) {
             mpg: trip.mpg,
             gasPrice: trip.gas_price,
             seatsOffered: trip.seats_offered,
-            ridersBooked: trip.seats_booked,
+            ridersBooked: payingRiders(trip),
           });
           return (
             <Marker

@@ -2,10 +2,13 @@
 
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { StyleSheet, Switch, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
-import { Body, Button, Card, Chip, ErrorText, Label, TextField } from '@/components/ui';
+import { PressableScale } from '@/components/motion';
+import { VibeSliders } from '@/components/vibes';
+import { Body, Button, Card, Chip, ErrorText, Label, Text, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { BIO_MAX_LENGTH, CLASS_YEARS } from '@/lib/config';
@@ -69,10 +72,13 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
   return (
     <View style={styles.form}>
       {/* Photo */}
-      <Pressable onPress={pickPhoto} style={styles.photoRow} accessibilityRole="button" accessibilityLabel="Choose a profile photo">
-        <Avatar uri={photoUri} name={values.fullName} size={88} />
-        <Body style={{ color: colors.primary, fontWeight: '700' }}>{photoUri ? 'Change photo' : 'Add a photo'}</Body>
-      </Pressable>
+      <PressableScale onPress={pickPhoto} style={styles.photoRow} accessibilityRole="button" accessibilityLabel="Choose a profile photo">
+        <Avatar uri={photoUri} name={values.fullName} size={104} />
+        <View style={[styles.photoPill, { backgroundColor: colors.track }]}>
+          <Ionicons name="camera-outline" size={17} color={colors.text} />
+          <Text style={{ color: colors.text, fontWeight: '600', fontSize: 15 }}>{photoUri ? 'Change photo' : 'Add a photo'}</Text>
+        </View>
+      </PressableScale>
 
       <TextField
         label="Name"
@@ -114,11 +120,11 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
         error={errors.bio}
       />
 
-      <Label>In the car, I&apos;m usually…</Label>
-      <View style={styles.chipRow}>
-        <Chip label="Quiet ride" icon="volume-mute-outline" selected={values.chatPreference === 'quiet'} onPress={() => set('chatPreference', 'quiet')} />
-        <Chip label="Down to talk" icon="chatbubbles-outline" selected={values.chatPreference === 'talk'} onPress={() => set('chatPreference', 'talk')} />
-      </View>
+      <Label>Vibe check</Label>
+      <Body muted style={{ fontSize: 14 }}>Slide to show how you like a ride. Riders and drivers see this so you can find your match.</Body>
+      <Card>
+        <VibeSliders vibes={values.vibes} onChange={(vibes) => set('vibes', vibes)} />
+      </Card>
 
       {/* Car */}
       <Card>
@@ -236,6 +242,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
     paddingVertical: Spacing.sm,
+    alignSelf: 'center',
+  },
+  photoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   chipRow: {
     flexDirection: 'row',

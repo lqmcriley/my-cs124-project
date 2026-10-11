@@ -1,3 +1,5 @@
+> **Name change (Oct 11, 2026):** the app is now called **Hitch Illini**. The original spec below says "Halfsies".
+
 I want to build a mobile app called **Halfsies**: a carpool app for University of Illinois Urbana-Champaign (UIUC) students. Drivers post trips they're already taking, and riders book a seat and split the gas cost. It is cost-sharing, not a taxi service. Drivers should never make a profit.
 
 I'm a beginner, so explain what you're doing as you go, keep the code simple, and build it in the phases below. Finish and test one phase before starting the next, and stop at the end of each phase so I can try it.

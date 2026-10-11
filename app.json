@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Halfsies",
+    "name": "Hitch Illini",
     "slug": "halfsies",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -37,8 +37,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Halfsies uses your photos so you can add a profile picture.",
-          "cameraPermission": "Halfsies uses your camera so you can take a profile picture."
+          "photosPermission": "Hitch Illini uses your photos so you can add a profile picture.",
+          "cameraPermission": "Hitch Illini uses your camera so you can take a profile picture."
         }
       ],
       "@react-native-community/datetimepicker"

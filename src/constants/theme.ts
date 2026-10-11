@@ -1,4 +1,4 @@
-// Halfsies colors for light and dark mode.
+// Hitch Illini colors for light and dark mode.
 // Brand: warm orange (#FF6B35) + deep navy (#13294B).
 // Buttons use navy text on orange because white on this orange is too faint to read easily.
 
@@ -14,6 +14,7 @@ export const Colors = {
     card: '#FFFFFF',
     border: '#E3E5EA',
     inputBackground: '#FFFFFF',
+    track: '#E8E9EE', // background of segmented controls
     danger: '#C62828',
     success: '#2E7D32',
   },
@@ -26,6 +27,7 @@ export const Colors = {
     card: '#13294B',
     border: '#24406B',
     inputBackground: '#0F2140',
+    track: '#1B3459',
     danger: '#FF8A80',
     success: '#81C784',
   },
@@ -42,13 +44,13 @@ export const Spacing = {
 } as const;
 
 export const Radius = {
-  md: 12, // buttons, inputs
+  md: 12, // text fields
   lg: 16, // cards
-  pill: 999, // chips
+  pill: 999, // buttons, chips, search bars, segmented controls
 } as const;
 
 // Minimum height for buttons and fields (Apple recommends at least 44).
-export const TapTarget = 46;
+export const TapTarget = 48;
 
 // Helvetica Neue is built into iPhones. Android has no Helvetica, so it uses
 // its standard system font, which looks very close.

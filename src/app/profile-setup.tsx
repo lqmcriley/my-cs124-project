@@ -12,7 +12,7 @@ export default function ProfileSetupScreen() {
       <Heading>Set up your profile</Heading>
       <Body muted>Drivers and riders see this before sharing a car, so a real photo and name help.</Body>
       <ProfileForm submitLabel="Save and continue" />
-      <Button title="Sign out" variant="ghost" onPress={signOut} />
+      <Button title="Sign out" icon="log-out-outline" variant="danger" onPress={signOut} />
     </Screen>
   );
 }

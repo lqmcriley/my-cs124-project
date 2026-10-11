@@ -2,6 +2,7 @@
 // Keep these in sync with supabase/migrations/.
 
 import { CLASS_YEARS } from './config';
+import type { VibeKey } from './vibes';
 
 export type ClassYear = (typeof CLASS_YEARS)[number];
 export type ChatPreference = 'quiet' | 'talk';
@@ -14,7 +15,7 @@ export type Profile = {
   major: string | null;
   bio: string | null;
   chat_preference: ChatPreference;
-};
+} & Partial<Record<VibeKey, number>>; // vibe check sliders (0–4)
 
 export type Car = {
   id: string;
@@ -63,11 +64,14 @@ export type Trip = {
   parking_location: string | null;
   shuttle_minutes: number;
   seats_booked: number; // approved riders, kept up to date by the database
+  late_cancel_count: number; // riders who cancelled within 24 hours (they still owe their share)
+  cancelled_at: string | null;
+  driver_late_cancel: boolean;
 };
 
 // A trip plus the driver's public profile and car, as loaded for cards and the detail screen.
 export type TripWithDriver = Trip & {
-  driver: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'year' | 'major' | 'bio' | 'chat_preference'>;
+  driver: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'year' | 'major' | 'bio' | 'chat_preference' | VibeKey>;
   car: Pick<Car, 'make' | 'model' | 'color' | 'plate' | 'seats'> | null;
 };
 
@@ -85,14 +89,27 @@ export type TripRequest = {
   parking_acknowledged: boolean;
   decided_at: string | null;
   created_at: string;
+  paid_at: string | null; // set by the driver with "Mark paid"
+  cancelled_at: string | null;
+  late_cancel: boolean; // cancelled an approved seat within 24 hours
+  no_show: boolean; // driver reported this rider didn't come
+  driver_no_show: boolean; // this rider reported the driver didn't come
 };
 
 // A request plus the rider's public profile (what the driver sees).
 export type RequestWithRider = TripRequest & {
-  rider: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'year' | 'major' | 'chat_preference'>;
+  rider: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'year' | 'major' | 'chat_preference' | VibeKey>;
 };
 
 // A request plus its trip (what the rider sees in My trips).
 export type RequestWithTrip = TripRequest & { trip: TripWithDriver };
 
 export type TripRider = { rider_id: string; first_name: string; avatar_url: string | null };
+
+export type Message = {
+  id: string;
+  trip_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+};

@@ -2,7 +2,8 @@
 
 import { BIO_MAX_LENGTH, MAX_MPG, MAX_PASSENGER_SEATS, MIN_MPG } from './config';
 import { cleanHandle, handleError, PaymentMethods } from './payments';
-import type { Car, ChatPreference, ClassYear, Profile } from './types';
+import type { Car, ClassYear, Profile } from './types';
+import { chatPreferenceFromVibe, Vibes, vibesFrom } from './vibes';
 
 // What the form holds while you're typing. Numbers are strings until we save.
 export type ProfileFormValues = {
@@ -10,7 +11,7 @@ export type ProfileFormValues = {
   year: ClassYear | null;
   major: string;
   bio: string;
-  chatPreference: ChatPreference;
+  vibes: Vibes; // vibe check sliders
   isDriver: boolean;
   make: string;
   model: string;
@@ -36,7 +37,7 @@ export function initialFormValues(
     year: profile?.year ?? null,
     major: profile?.major ?? '',
     bio: profile?.bio ?? '',
-    chatPreference: profile?.chat_preference ?? 'talk',
+    vibes: initialVibes(profile),
     isDriver: car !== null,
     make: car?.make ?? '',
     model: car?.model ?? '',
@@ -48,6 +49,14 @@ export function initialFormValues(
     cashapp: payment?.cashapp_cashtag ?? '',
     paypal: payment?.paypal_username ?? '',
   };
+}
+
+// Vibes from the profile. Profiles saved before the sliders existed start their
+// chat slider from the old "Quiet ride / Down to talk" choice.
+function initialVibes(profile: Profile | null): Vibes {
+  const vibes = vibesFrom(profile);
+  if (profile && profile.vibe_chat === undefined) vibes.vibe_chat = profile.chat_preference === 'quiet' ? 0 : 3;
+  return vibes;
 }
 
 // Returns an error message for each field that needs fixing. Empty object = all good.
@@ -93,7 +102,8 @@ export function toProfileRow(userId: string, values: ProfileFormValues) {
     year: values.year,
     major: values.major.trim() || null,
     bio: values.bio.trim() || null,
-    chat_preference: values.chatPreference,
+    chat_preference: chatPreferenceFromVibe(values.vibes.vibe_chat),
+    ...values.vibes,
   };
 }
 

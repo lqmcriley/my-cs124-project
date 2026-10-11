@@ -1,6 +1,6 @@
-# Halfsies — notes for Claude
+# Hitch Illini — notes for Claude
 
-Halfsies is a carpool app for UIUC students. Drivers post trips they're already taking, and riders book a seat and split the gas cost. It is **cost-sharing only**, so drivers never profit. Full requirements: `SPEC.md`. Out of scope: `ROADMAP.md`. Account and key setup: `SETUP.md`. Expo-specific agent rules: `AGENTS.md` (read it: always check the versioned Expo docs, and use `npx expo install`).
+Hitch Illini is a carpool app for UIUC students. Drivers post trips they're already taking, and riders book a seat and split the gas cost. It is **cost-sharing only**, so drivers never profit. Full requirements: `SPEC.md`. Out of scope: `ROADMAP.md`. Account and key setup: `SETUP.md`. Expo-specific agent rules: `AGENTS.md` (read it: always check the versioned Expo docs, and use `npx expo install`).
 
 The owner is a beginner. Keep code simple, explain changes in plain language, and build one phase at a time (see `SPEC.md` → Build phases). Stop after each phase so the owner can test it.
 
@@ -12,7 +12,7 @@ The owner is a beginner. Keep code simple, explain changes in plain language, an
 - Give step-by-step instructions (numbered, with exact button names) for anything the owner has to do in Supabase, Google Cloud, Expo or on their phone.
 - Keep replies short and skimmable. Check in rather than dumping everything at once.
 
-**Status:** Phases 1–2 done and tested by the owner. Phase 3 (booking: requests, approve/decline, My trips, cancellations) built, awaiting owner testing. Next: Phase 4 (chat + payments).
+**Status:** Phases 1–2 tested by the owner. Phase 3 (booking), Phase 4 (chat, pay buttons, mark paid), and reliability (late cancels, price lock, no-shows, "Shows up X of Y") built, awaiting owner testing. Next: Phase 5 (reviews, report/block, share trip, 911). App renamed **Hitch Illini** (code name stays `halfsies`).
 
 **Pricing decision (owner's choice):** riders pay based on how many people actually ride. Trips show the price "if you join now" (booked riders + you), "as low as" (full car), and a per-rider-count table. Phase 3/4 must compute what each rider owes from the actual number of riders. See `src/lib/pricing.ts`.
 
@@ -41,6 +41,7 @@ src/
     edit-trip/[id].tsx      Edit trip (driver)
     request-seat/[id].tsx   Request a seat (rider; drop-off, note, parking OK)
     (tabs)/my-trips.tsx     My trips: needs-your-answer, upcoming/past, driving/riding
+    chat/[id].tsx           Trip group chat (driver + approved riders, live via Realtime)
     (tabs)/profile.tsx      Your profile, car, sign out
   components/
     ui.tsx                  Screen, Heading, Body, Label, Button, TextField, Chip, Card, ErrorText
@@ -64,14 +65,24 @@ src/
     airport.ts              Leave-time + terminal-arrival math (tested)
     booking.ts, booking-api.ts   Booking rules (tested) + calls to request_seat / respond_to_request / cancel_request / trip_riders
     payments.ts             Payment handle cleanup/validation + pay links (tested)
+    chat-api.ts             Load/send chat messages + live subscription
     types.ts                Row types; keep in sync with migrations
     __tests__/              Jest unit tests for the pure lib files
   providers/auth-provider.tsx   session, profile, car, loading, refreshProfile, signOut
 supabase/migrations/        SQL, one file per phase; run in filename order
+supabase/tests/             Database tests (stubs.sql fakes Supabase's auth/storage; *.test.sql print PASS lines)
+scripts/test-db.sh          Runs all migrations + database tests on a throwaway local Postgres
 ```
 
 ## Rules to never break
 
+- Reliability (owner's choice): cancelling an approved seat <24h before departure = late cancel; the seat reopens but the rider still owes (`payingRiders()` = approved + late cancellers), so others' price never rises. Drivers cancelling <24h with riders = late cancel. No-shows reportable for 7 days after departure. Totals via the `reliability()` SQL function; labels in `lib/reliability.ts`.
+- A car MPG change updates that driver's upcoming trips only while nobody is booked (trigger `cars_sync_trip_mpg`).
+- UI conventions (owner's choices): pill-shaped buttons that shrink-and-spring on press (`PressableScale` in `components/motion.tsx`); full-width `SegmentedControl` for 2–7 short options (chips only for long lists); pill search bar in `place-search-field.tsx`; tab bar never minimizes; Post/Edit trip use fold-out sections (`components/fold-section.tsx`, `trip-details-fields.tsx`); an illustrated car painted in the car's color (`components/car-illustration.tsx`, `lib/car-color.ts`), never a real photo.
+- Vibe check: five 0–4 sliders on profiles (`lib/vibes.ts`, `components/vibes.tsx`): chat, music, temperature, windows, stops. `chat_preference` is kept in sync from the chat slider.
+- Haptics on important actions (`lib/haptics.ts`) and subtle Reanimated motion (`components/motion.tsx`): owner chose haptics + smooth content, subtle, no springy taps.
+- Start the app with `EXPO_UNSTABLE_TUNNEL_V2=1 npx expo start --tunnel` (Expo's ngrok tunnel is broken).
+- Payments open only after departure, so the rider count is final: what a rider owes = `amountOwed()` in `lib/booking.ts`. Drivers mark paid via `set_request_paid`; driver handles reach riders only via `trip_payment_handles`.
 - Booking writes go only through the security-definer SQL functions in the Phase 3 migration; `trip_requests` has no insert/update policies. `trips.seats_booked` is maintained by those functions (never writable by clients).
 
 - The `@illinois.edu` check lives in **both** `lib/email.ts` and a database trigger on `auth.users`.
@@ -94,6 +105,9 @@ Checks to run before calling a phase done:
 npx tsc --noEmit            # type-check
 npx expo lint               # lint
 npm test                    # unit tests
+npm run test:db             # database rules (needs: brew install postgresql@17)
 ```
 
-Database: paste each new file from `supabase/migrations/` into the Supabase SQL Editor (see SETUP.md 2c). To test SQL locally, the Homebrew `postgresql@17` package is installed. Spin up a throwaway cluster, stub the `auth`/`storage` schemas and roles, then run the migration (set `LC_ALL=en_US.UTF-8` and use TCP on 127.0.0.1, because long folder paths break Postgres's Unix socket).
+Add a `supabase/tests/*.test.sql` check (using `test.ok`, `test.fails`, `test.as`) for every new database rule.
+
+Database: paste each new file from `supabase/migrations/` into the Supabase SQL Editor (see SETUP.md 2c).

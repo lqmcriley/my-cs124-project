@@ -6,10 +6,11 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 
 import { PriceBreakdown } from '@/components/price-breakdown';
-import { TripDetailsFields } from '@/components/trip-details-fields';
+import { sectionsWithErrors, TripDetailsFields, TripSection } from '@/components/trip-details-fields';
 import { Body, Button, Card, ErrorText, Heading, Label, Screen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { payingRiders } from '@/lib/booking';
 import { formatMoney } from '@/lib/format';
 import { toTripUpdate, tripFormFromTrip, TripFormErrors, TripFormValues, validateTripForm } from '@/lib/trip-form';
 import { fetchTrip, updateTrip } from '@/lib/trips-api';
@@ -67,6 +68,11 @@ function EditTripForm({ trip }: { trip: TripWithDriver }) {
   const [errors, setErrors] = useState<TripFormErrors>({});
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
+  // Which sections are open. Seats start open, since that's the most common edit.
+  const [open, setOpen] = useState<Partial<Record<TripSection, boolean>>>({ seats: true });
+  function toggle(section: TripSection) {
+    setOpen((current) => ({ ...current, [section]: !current[section] }));
+  }
   // You can offer up to as many seats as your car has.
   const maxSeats = trip.car?.seats ?? trip.seats_offered;
 
@@ -80,7 +86,8 @@ function EditTripForm({ trip }: { trip: TripWithDriver }) {
     const found = validateTripForm(values, maxSeats);
     setErrors(found);
     if (Object.keys(found).length > 0) {
-      setSaveError('Please fix the highlighted fields.');
+      setOpen((current) => ({ ...current, ...Object.fromEntries(sectionsWithErrors(found).map((section) => [section, true])) }));
+      setSaveError('Please fix the sections outlined in red.');
       return;
     }
     setSaving(true);
@@ -102,18 +109,19 @@ function EditTripForm({ trip }: { trip: TripWithDriver }) {
         </Label>
         <Body muted>
           {trip.route_miles} mi · gas at {formatMoney(trip.gas_price)}/gal. The route, pickup spot and gas price can&apos;t
-          change after posting, so riders&apos; prices stay fair. To change those, cancel and post a new trip.
+          change after posting, so riders&apos; prices stay fair. To change those, cancel and post a new trip. If you update
+          your car&apos;s MPG in your profile, this trip updates too, as long as nobody has booked yet.
         </Body>
       </Card>
 
-      <TripDetailsFields values={values} errors={errors} set={set} maxSeats={maxSeats} minSeats={Math.max(trip.seats_booked, 1)} />
+      <TripDetailsFields values={values} errors={errors} set={set} maxSeats={maxSeats} minSeats={Math.max(trip.seats_booked, 1)} open={open} toggle={toggle} />
 
       <PriceBreakdown
         miles={trip.route_miles}
         mpg={trip.mpg}
         gasPrice={trip.gas_price}
         seatsOffered={values.seats}
-        ridersBooked={trip.seats_booked}
+        ridersBooked={payingRiders(trip)}
         viewer="driver"
       />
 

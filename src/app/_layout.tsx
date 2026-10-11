@@ -72,6 +72,7 @@ function RootNavigator() {
           <Stack.Screen name="trip/[id]" options={{ headerShown: true, title: 'Trip details', headerBackTitle: 'Back' }} />
           <Stack.Screen name="edit-trip/[id]" options={{ headerShown: true, title: 'Edit trip', presentation: 'modal' }} />
           <Stack.Screen name="request-seat/[id]" options={{ headerShown: true, title: 'Request a seat', presentation: 'modal' }} />
+          <Stack.Screen name="chat/[id]" options={{ headerShown: true, title: 'Group chat', headerBackTitle: 'Trip' }} />
           <Stack.Screen
             name="edit-profile"
             options={{ headerShown: true, title: 'Edit profile', presentation: 'modal' }}

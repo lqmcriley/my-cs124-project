@@ -1,4 +1,4 @@
-# Halfsies setup guide
+# Hitch Illini setup guide
 
 This guide lists every account and key the app needs, in the order you need them.
 
@@ -64,7 +64,7 @@ Supabase's built-in email sender only allows **2 emails per hour**, and it **won
 2. In Resend, go to **API Keys → Create API Key**, name it `halfsies`, and copy the key (starts with `re_`).
 3. In Supabase, go to **Authentication → Emails → Set up SMTP** (button at the top right), turn on **Enable custom SMTP**, and enter:
    - Sender email: `onboarding@resend.dev`
-   - Sender name: `Halfsies`
+   - Sender name: `Hitch Illini`
    - Host: `smtp.resend.com`
    - Port: `465`
    - Username: `resend`
@@ -76,9 +76,9 @@ Supabase's built-in email sender only allows **2 emails per hour**, and it **won
 By default Supabase emails a clickable link. We want a code you can type. The templates are only editable after step 2d.
 
 1. Go to **Authentication → Emails** (email templates).
-2. Open the **Magic Link** template. Set the subject to `Your Halfsies code`, click **Source**, and replace the body with:
+2. Open the **Magic Link** template. Set the subject to `Your Hitch Illini code`, click **Source**, and replace the body with:
    ```html
-   <h2>Your Halfsies sign-in code</h2>
+   <h2>Your Hitch Illini sign-in code</h2>
    <p>Enter this code in the app:</p>
    <p style="font-size:32px;font-weight:bold;letter-spacing:6px">{{ .Token }}</p>
    <p>It expires in 1 hour. If you didn't request it, you can ignore this email.</p>
@@ -96,7 +96,7 @@ With Resend's free setup above, only **your own** email receives codes. Before f
 ## Part 3: Google Maps key (do this at the start of Phase 2)
 
 1. Go to <https://console.cloud.google.com> and sign in with a Google account.
-2. Click the project picker at the top, then **New project**, name it `Halfsies`, and click **Create**.
+2. Click the project picker at the top, then **New project**, name it `Hitch Illini`, and click **Create**.
 3. Open **Billing** and link a billing account. Google requires a card, but Maps has a free monthly allowance that a student project should stay under. Also go to **Billing → Budgets & alerts** and create a $5 budget alert so nothing surprises you.
 4. Go to **APIs & Services → Library** and enable:
    - **Places API (New)**: address autocomplete.
@@ -139,7 +139,7 @@ After editing `.env`, stop the server (Ctrl+C) and start it again.
 
 ## Phase 1 test checklist
 
-- [ ] Type a Gmail address and tap **Send me a code**. You should see "Halfsies is only for UIUC students…"
+- [ ] Type a Gmail address and tap **Send me a code**. You should see "Hitch Illini is only for UIUC students…"
 - [ ] Type your `@illinois.edu` address. A 6-digit code arrives (check spam), and typing it signs you in.
 - [ ] You land on **Set up your profile**. Tap **Save** with an empty name and you should see an error.
 - [ ] Add a photo, name, year, bio, and chat preference.

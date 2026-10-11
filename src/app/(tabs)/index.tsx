@@ -6,15 +6,18 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
+import { AnimatedItem } from '@/components/motion';
 import { PlaceSearchField } from '@/components/place-search-field';
 import { TripCard } from '@/components/trip-card';
 import { TripsMap } from '@/components/trips-map';
-import { Body, Card, Chip, ErrorText, Heading, Screen } from '@/components/ui';
+import { Body, Card, Chip, ErrorText, Heading, Screen, SegmentedControl } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Place, QUICK_PICKS, QuickPick } from '@/lib/config';
 import { firstName } from '@/lib/format';
 import { filterTrips } from '@/lib/trip-search';
+import { Reliability } from '@/lib/reliability';
+import { fetchReliability } from '@/lib/reliability-api';
 import { fetchUpcomingTrips } from '@/lib/trips-api';
 import type { TripWithDriver } from '@/lib/types';
 import { useAuth } from '@/providers/auth-provider';
@@ -27,14 +30,17 @@ export default function HomeScreen() {
   const [date, setDate] = useState<Date | null>(null);
   const [view, setView] = useState<'list' | 'map'>('list');
   const [trips, setTrips] = useState<TripWithDriver[] | null>(null); // null = still loading
+  const [reliability, setReliability] = useState<Record<string, Reliability>>({});
   const [loadError, setLoadError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(() => {
     return fetchUpcomingTrips()
-      .then((result) => {
+      .then(async (result) => {
         setTrips(result);
         setLoadError('');
+        // Every driver's "Shows up X of Y trips", in one request.
+        setReliability(await fetchReliability(result.map((trip) => trip.driver_id)));
       })
       .catch((err: Error) => setLoadError(err.message));
   }, []);
@@ -72,10 +78,14 @@ export default function HomeScreen() {
 
       <DateTimeField label="Date" mode="date" value={date} onChange={setDate} placeholder="Any day" minimumDate={new Date()} clearable />
 
-      <View style={styles.chips}>
-        <Chip label="List" icon="list" selected={view === 'list'} onPress={() => setView('list')} />
-        <Chip label="Map" icon="map-outline" selected={view === 'map'} onPress={() => setView('map')} />
-      </View>
+      <SegmentedControl
+        options={[
+          { value: 'list', label: 'List', icon: 'list' },
+          { value: 'map', label: 'Map', icon: 'map-outline' },
+        ]}
+        value={view}
+        onChange={setView}
+      />
 
       <ErrorText>{loadError}</ErrorText>
 
@@ -97,8 +107,10 @@ export default function HomeScreen() {
           <Body muted>
             {results.length} {results.length === 1 ? 'ride' : 'rides'} found
           </Body>
-          {results.map((trip) => (
-            <TripCard key={trip.id} trip={trip} />
+          {results.map((trip, index) => (
+            <AnimatedItem key={trip.id} index={index}>
+              <TripCard trip={trip} reliability={reliability[trip.driver_id]} />
+            </AnimatedItem>
           ))}
         </View>
       )}

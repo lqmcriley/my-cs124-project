@@ -4,10 +4,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
-import { Badge, Body, Card, Chip, ErrorText, Heading, Label, Screen, Text } from '@/components/ui';
+import { AnimatedItem, PressableScale } from '@/components/motion';
+import { Badge, Body, Card, ErrorText, Heading, Label, Screen, SegmentedControl, Text } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { REQUEST_STATUS_TEXT, splitMyTrips } from '@/lib/booking';
@@ -59,9 +60,9 @@ export default function MyTripsScreen() {
       {groups && groups.needsAnswer.length > 0 && (
         <View style={{ gap: Spacing.sm }}>
           <Label>Needs your answer</Label>
-          {groups.needsAnswer.map((trip) => (
-            <Pressable
-              key={trip.id}
+          {groups.needsAnswer.map((trip, index) => (
+            <AnimatedItem key={trip.id} index={index}>
+            <PressableScale
               onPress={() => router.push(`/trip/${trip.id}`)}
               accessibilityRole="button"
               style={[styles.alert, { backgroundColor: colors.card, borderColor: colors.primary }]}>
@@ -75,15 +76,20 @@ export default function MyTripsScreen() {
                 </Body>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-            </Pressable>
+            </PressableScale>
+            </AnimatedItem>
           ))}
         </View>
       )}
 
-      <View style={styles.chips}>
-        <Chip label="Upcoming" selected={view === 'upcoming'} onPress={() => setView('upcoming')} />
-        <Chip label="Past" selected={view === 'past'} onPress={() => setView('past')} />
-      </View>
+      <SegmentedControl
+        options={[
+          { value: 'upcoming', label: 'Upcoming' },
+          { value: 'past', label: 'Past' },
+        ]}
+        value={view}
+        onChange={setView}
+      />
 
       <ErrorText>{error}</ErrorText>
       {!shown && !error && <ActivityIndicator color={colors.primary} size="large" style={{ marginTop: Spacing.lg }} />}
@@ -100,13 +106,14 @@ export default function MyTripsScreen() {
       {shown && shown.driving.length > 0 && (
         <View style={{ gap: Spacing.sm }}>
           <Label>Driving</Label>
-          {shown.driving.map((trip) => (
-            <TripRow
-              key={trip.id}
-              trip={trip}
-              subtitle={`${trip.seats_booked} of ${trip.seats_offered} seats booked`}
-              badge={trip.status === 'cancelled' ? { label: 'Cancelled', tone: 'neutral' } : undefined}
-            />
+          {shown.driving.map((trip, index) => (
+            <AnimatedItem key={`${view}-${trip.id}`} index={index}>
+              <TripRow
+                trip={trip}
+                subtitle={`${trip.seats_booked} of ${trip.seats_offered} seats booked`}
+                badge={trip.status === 'cancelled' ? { label: 'Cancelled', tone: 'neutral' } : undefined}
+              />
+            </AnimatedItem>
           ))}
         </View>
       )}
@@ -114,18 +121,21 @@ export default function MyTripsScreen() {
       {shown && shown.riding.length > 0 && (
         <View style={{ gap: Spacing.sm }}>
           <Label>Riding</Label>
-          {shown.riding.map((request) => (
+          {shown.riding.map((request, index) => (
+            <AnimatedItem key={`${view}-${request.id}`} index={index}>
             <TripRow
-              key={request.id}
               trip={request.trip}
               subtitle={`with ${firstName(request.trip.driver.full_name)}`}
               showDriver
               badge={
                 request.trip.status === 'cancelled'
                   ? { label: 'Trip cancelled', tone: 'neutral' }
-                  : { label: REQUEST_STATUS_TEXT[request.status], tone: tone(request.status) }
+                  : request.late_cancel
+                    ? { label: request.paid_at ? 'Late cancel · paid' : 'Late cancel · you owe your share', tone: 'bad' }
+                    : { label: REQUEST_STATUS_TEXT[request.status], tone: tone(request.status) }
               }
             />
+            </AnimatedItem>
           ))}
         </View>
       )}
@@ -150,10 +160,10 @@ function TripRow({
 }) {
   const colors = useTheme();
   return (
-    <Pressable
+    <PressableScale
       onPress={() => router.push(`/trip/${trip.id}`)}
       accessibilityRole="button"
-      style={({ pressed }) => [styles.row, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
+      style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}>
       {showDriver && <Avatar uri={trip.driver.avatar_url} name={trip.driver.full_name} size={40} />}
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
@@ -165,7 +175,7 @@ function TripRow({
         {badge && <Badge label={badge.label} tone={badge.tone} />}
       </View>
       <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

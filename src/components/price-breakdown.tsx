@@ -2,6 +2,7 @@
 
 import { StyleSheet, View } from 'react-native';
 
+import { FadeSwap } from '@/components/motion';
 import { Card, Text } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -28,7 +29,9 @@ export function PriceBreakdown({ miles, mpg, gasPrice, seatsOffered, ridersBooke
   return (
     <Card>
       <View style={styles.header}>
-        <Text style={[styles.big, { color: colors.text }]}>{formatMoney(ifYouJoin.perSeat)}</Text>
+        <FadeSwap value={ifYouJoin.perSeat}>
+          <Text style={[styles.big, { color: colors.text }]}>{formatMoney(ifYouJoin.perSeat)}</Text>
+        </FadeSwap>
         <Text style={{ color: colors.textSecondary, fontSize: 15 }}>
           {viewer === 'rider' ? 'per seat if you join now' : 'per rider if only 1 joins'}
         </Text>

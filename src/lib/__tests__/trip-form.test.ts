@@ -115,7 +115,7 @@ describe('toTripRow', () => {
 
 describe('editing', () => {
   it('round-trips a saved trip and only updates editable columns', () => {
-    const row = { id: 't1', status: 'scheduled' as const, seats_booked: 0, ...toTripRow('me', car, airportTrip) };
+    const row = { id: 't1', status: 'scheduled' as const, seats_booked: 0, late_cancel_count: 0, cancelled_at: null, driver_late_cancel: false, ...toTripRow('me', car, airportTrip) };
     const values = tripFormFromTrip(row);
     expect(validateTripForm(values, car.seats, NOW)).toEqual({});
 

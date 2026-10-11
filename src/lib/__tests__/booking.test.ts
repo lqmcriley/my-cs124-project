@@ -1,4 +1,4 @@
-import { requestBlocker, riderEstimate, splitMyTrips } from '../booking';
+import { amountOwed, isWithin24Hours, payingRiders, paymentNote, requestBlocker, riderEstimate, splitMyTrips } from '../booking';
 import type { RequestWithTrip, TripRequest, TripWithDriver } from '../types';
 
 const NOW = new Date('2026-10-10T12:00:00');
@@ -23,6 +23,9 @@ function trip(id: string, departure: string, extra: Partial<TripWithDriver> = {}
     flex_minutes: 30,
     seats_offered: 3,
     seats_booked: 0,
+    late_cancel_count: 0,
+    cancelled_at: null,
+    driver_late_cancel: false,
     pickup_spot: 'Illini Union',
     luggage: 'backpack',
     notes: null,
@@ -55,6 +58,11 @@ function request(id: string, t: TripWithDriver, status: TripRequest['status']): 
     parking_acknowledged: false,
     decided_at: null,
     created_at: NOW.toISOString(),
+    paid_at: null,
+    cancelled_at: null,
+    late_cancel: false,
+    no_show: false,
+    driver_no_show: false,
     trip: t,
   };
 }
@@ -116,5 +124,47 @@ describe('splitMyTrips', () => {
     expect(result.upcoming.riding.map((r) => r.id)).toEqual(['r1']);
     expect(result.past.driving.map((t) => t.id)).toEqual(['cxl', 'old']);
     expect(result.past.riding.map((r) => r.id)).toEqual(['r2', 'r3']);
+  });
+});
+
+describe('amountOwed', () => {
+  it('splits between everyone who actually rode', () => {
+    // 2 riders + driver = 3 people: $17.45 / 3 = 5.81
+    expect(amountOwed(trip('t', '2026-10-09T09:00:00', { seats_booked: 2 }), { rider_miles: null })).toBe(5.81);
+  });
+
+  it('is cheaper for a rider who got off early', () => {
+    expect(amountOwed(trip('t', '2026-10-09T09:00:00', { seats_booked: 2 }), { rider_miles: 75 })).toBe(2.9);
+  });
+});
+
+describe('paymentNote', () => {
+  it('names the trip and day', () => {
+    expect(paymentNote(trip('t', '2026-10-18T09:00:00'))).toBe("Hitch Illini gas: Illini Union → O'Hare, Sun, Oct 18");
+  });
+});
+
+describe('price lock (late cancels still pay)', () => {
+  it('counts late cancellers as paying riders', () => {
+    expect(payingRiders(trip('t', '2026-10-09T09:00:00', { seats_booked: 1, late_cancel_count: 1 }))).toBe(2);
+  });
+
+  it("keeps the remaining rider's price the same when someone bails late", () => {
+    const before = trip('t', '2026-10-09T09:00:00', { seats_booked: 2 });
+    const afterLateCancel = trip('t', '2026-10-09T09:00:00', { seats_booked: 1, late_cancel_count: 1 });
+    expect(amountOwed(afterLateCancel, { rider_miles: null })).toBe(amountOwed(before, { rider_miles: null }));
+  });
+
+  it('lets a new rider lower everyone\'s price after a late cancel', () => {
+    const t = trip('t', '2026-10-11T09:00:00', { seats_booked: 1, late_cancel_count: 1 });
+    // 2 paying + you + driver = 4 people
+    expect(riderEstimate(t, null).now).toBe(4.36);
+  });
+});
+
+describe('isWithin24Hours', () => {
+  it('knows when cancelling becomes late', () => {
+    expect(isWithin24Hours(trip('t', '2026-10-11T13:00:00'), NOW)).toBe(false); // 25 hours away
+    expect(isWithin24Hours(trip('t', '2026-10-11T11:00:00'), NOW)).toBe(true); // 23 hours away
   });
 });

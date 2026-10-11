@@ -2,12 +2,11 @@
 // useTheme(), so light and dark mode work automatically.
 
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { ReactElement, ReactNode } from 'react';
+import { ReactElement, ReactNode, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   RefreshControlProps,
   ScrollView,
   StyleProp,
@@ -22,6 +21,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FadeSwap, PressableScale } from '@/components/motion';
 import { FontFamily, Radius, Spacing, TapTarget } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -95,41 +95,53 @@ export function ErrorText({ children }: { children: ReactNode }) {
 type ButtonProps = {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  icon?: keyof typeof Ionicons.glyphMap;
   loading?: boolean;
   disabled?: boolean;
 };
 
-export function Button({ title, onPress, variant = 'primary', loading, disabled }: ButtonProps) {
+// A pill-shaped button that shrinks slightly while pressed and springs back.
+//   primary   = orange (the main action on a screen)
+//   secondary = white/outlined
+//   ghost     = text only
+//   danger    = outlined red (sign out, cancel trip)
+export function Button({ title, onPress, variant = 'primary', icon, loading, disabled }: ButtonProps) {
   const colors = useTheme();
   const isDisabled = disabled || loading;
-  const background = variant === 'primary' ? colors.primary : variant === 'secondary' ? colors.card : 'transparent';
-  const textColor = variant === 'primary' ? colors.onPrimary : variant === 'secondary' ? colors.text : colors.primary;
+  const background = variant === 'primary' ? colors.primary : variant === 'ghost' ? 'transparent' : colors.card;
+  const textColor =
+    variant === 'primary' ? colors.onPrimary : variant === 'danger' ? colors.danger : variant === 'secondary' ? colors.text : colors.primary;
+  const borderColor = variant === 'danger' ? colors.danger : colors.border;
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       disabled={isDisabled}
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
-      style={({ pressed }) => [
+      style={[
         styles.button,
-        { backgroundColor: background, opacity: isDisabled ? 0.5 : pressed ? 0.8 : 1 },
-        variant === 'secondary' && { borderWidth: 1, borderColor: colors.border },
+        { backgroundColor: background, opacity: isDisabled ? 0.5 : 1 },
+        (variant === 'secondary' || variant === 'danger') && { borderWidth: 1, borderColor },
       ]}>
       {loading ? (
         <ActivityIndicator color={textColor} />
       ) : (
-        <Text style={[styles.buttonText, { color: textColor }]}>{title}</Text>
+        <>
+          {icon && <Ionicons name={icon} size={19} color={textColor} />}
+          <Text style={[styles.buttonText, { color: textColor }]}>{title}</Text>
+        </>
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 
 type TextFieldProps = TextInputProps & { label: string; hint?: string; error?: string };
 
-export function TextField({ label, hint, error, style, ...inputProps }: TextFieldProps) {
+export function TextField({ label, hint, error, style, onFocus, onBlur, ...inputProps }: TextFieldProps) {
   const colors = useTheme();
+  const [focused, setFocused] = useState(false); // orange border while typing
   return (
     <View style={{ gap: Spacing.xs }}>
       <Label>{label}</Label>
@@ -137,13 +149,22 @@ export function TextField({ label, hint, error, style, ...inputProps }: TextFiel
         placeholderTextColor={colors.textSecondary}
         accessibilityLabel={label}
         {...inputProps}
+        onFocus={(event) => {
+          setFocused(true);
+          onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          setFocused(false);
+          onBlur?.(event);
+        }}
         style={[
           styles.input,
           {
             color: colors.text,
             fontFamily: FontFamily,
             backgroundColor: colors.inputBackground,
-            borderColor: error ? colors.danger : colors.border,
+            borderColor: error ? colors.danger : focused ? colors.primary : colors.border,
+            borderWidth: focused ? 1.5 : 1,
           },
           inputProps.multiline && { minHeight: 96, textAlignVertical: 'top', paddingTop: Spacing.md },
           style,
@@ -169,7 +190,7 @@ export function Chip({
   const colors = useTheme();
   const textColor = selected ? colors.onPrimary : colors.text;
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
@@ -183,7 +204,7 @@ export function Chip({
       ]}>
       {icon && <Ionicons name={icon} size={18} color={textColor} />}
       <Text style={[styles.chipText, { color: textColor }]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -218,9 +239,11 @@ const styles = StyleSheet.create({
   },
   button: {
     minHeight: TapTarget,
-    borderRadius: Radius.md,
+    borderRadius: Radius.pill,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.sm,
     paddingHorizontal: Spacing.lg,
   },
   buttonText: {
@@ -235,8 +258,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   chip: {
-    minHeight: 36,
-    paddingHorizontal: 14,
+    minHeight: 40,
+    paddingHorizontal: 16,
     borderRadius: Radius.pill,
     borderWidth: 1,
     flexDirection: 'row',
@@ -262,6 +285,26 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 13,
+    fontWeight: '600',
+  },
+  segments: {
+    flexDirection: 'row',
+    borderRadius: Radius.pill,
+    padding: 3,
+    gap: 3,
+  },
+  segment: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: Radius.pill,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: Spacing.sm,
+  },
+  segmentText: {
+    fontSize: 14,
     fontWeight: '600',
   },
   iconRow: {
@@ -292,14 +335,15 @@ export function IconRow({ icon, text, muted }: { icon: keyof typeof Ionicons.gly
 export function Checkbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
   const colors = useTheme();
   return (
-    <Pressable
+    <PressableScale
+      scaleTo={0.98}
       onPress={() => onChange(!checked)}
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
       style={styles.checkbox}>
       <Ionicons name={checked ? 'checkbox' : 'square-outline'} size={24} color={checked ? colors.primary : colors.textSecondary} />
       <Text style={[styles.body, { color: colors.text, flex: 1 }]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -308,8 +352,44 @@ export function Badge({ label, tone }: { label: string; tone: 'waiting' | 'good'
   const colors = useTheme();
   const color = { waiting: colors.primary, good: colors.success, bad: colors.danger, neutral: colors.textSecondary }[tone];
   return (
-    <View style={[styles.badge, { borderColor: color }]}>
+    <FadeSwap value={label} style={[styles.badge, { borderColor: color }]}>
       <Text style={[styles.badgeText, { color }]}>{label}</Text>
+    </FadeSwap>
+  );
+}
+
+// One rounded bar split into equal parts, like iOS Settings. Use for 2–5 short
+// choices (List / Map, Quiet / Talk...). Every option gets the same width, so rows line up.
+export function SegmentedControl<T extends string | number>({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly { value: T; label: string; icon?: keyof typeof Ionicons.glyphMap }[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  const colors = useTheme();
+  return (
+    <View style={[styles.segments, { backgroundColor: colors.track }]} accessibilityRole="radiogroup">
+      {options.map((option) => {
+        const selected = option.value === value;
+        const textColor = selected ? colors.onPrimary : colors.text;
+        return (
+          <PressableScale
+            key={String(option.value)}
+            scaleTo={0.97}
+            onPress={() => onChange(option.value)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected }}
+            style={[styles.segment, selected && { backgroundColor: colors.primary }]}>
+            {option.icon && <Ionicons name={option.icon} size={16} color={textColor} />}
+            <Text style={[styles.segmentText, { color: textColor }]} numberOfLines={1}>
+              {option.label}
+            </Text>
+          </PressableScale>
+        );
+      })}
     </View>
   );
 }

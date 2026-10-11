@@ -1,4 +1,4 @@
-# Halfsies Roadmap
+# Hitch Illini Roadmap
 
 These are intentionally **out of scope for the MVP**. They're listed here so we don't forget them.
 

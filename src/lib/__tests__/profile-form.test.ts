@@ -56,6 +56,11 @@ describe('database rows', () => {
       major: null,
       bio: null,
       chat_preference: 'talk',
+      vibe_chat: 2,
+      vibe_music: 2,
+      vibe_temp: 2,
+      vibe_windows: 2,
+      vibe_stops: 2,
     });
   });
 
@@ -76,6 +81,13 @@ describe('database rows', () => {
       { id: 'u', full_name: 'A B', avatar_url: null, year: 'Junior', major: 'CS', bio: null, chat_preference: 'quiet' },
       { id: 'c', owner_id: 'u', make: 'Kia', model: 'Soul', color: 'Red', plate: 'X1', mpg: 30, seats: 4 },
     );
-    expect(values).toMatchObject({ fullName: 'A B', year: 'Junior', chatPreference: 'quiet', isDriver: true, mpg: '30', seats: '4' });
+    expect(values).toMatchObject({ fullName: 'A B', year: 'Junior', vibes: { vibe_chat: 0, vibe_music: 2, vibe_temp: 2, vibe_windows: 2, vibe_stops: 2 }, isDriver: true, mpg: '30', seats: '4' });
+  });
+});
+
+describe('vibes', () => {
+  it('keeps the old quiet/talk setting in sync with the chat slider', () => {
+    const quiet = toProfileRow('u', { ...initialFormValues(null, null), fullName: 'A', vibes: { vibe_chat: 1, vibe_music: 4, vibe_temp: 0, vibe_windows: 3, vibe_stops: 2 } });
+    expect(quiet).toMatchObject({ chat_preference: 'quiet', vibe_chat: 1, vibe_music: 4, vibe_temp: 0 });
   });
 });

@@ -9,17 +9,46 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
+import { AnimatedItem } from '@/components/motion';
+import { PayButtons } from '@/components/pay-buttons';
 import { PriceBreakdown } from '@/components/price-breakdown';
+import { CarIllustration } from '@/components/car-illustration';
+import { ReliabilityBadge } from '@/components/reliability-badge';
+import { VibeMeters } from '@/components/vibes';
 import { RouteMap } from '@/components/route-map';
 import { Badge, Body, Button, Card, ErrorText, Heading, IconRow, Label, Screen, Text } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { terminalArrival } from '@/lib/airport';
-import { isUpcoming, REQUEST_STATUS_TEXT, requestBlocker, riderEstimate } from '@/lib/booking';
-import { cancelRequest, cancelTrip, fetchMyRequest, fetchRequestsForTrip, fetchTripRiders, respondToRequest } from '@/lib/booking-api';
+import {
+  amountOwed,
+  isUpcoming,
+  isWithin24Hours,
+  payingRiders,
+  paymentNote,
+  REQUEST_STATUS_TEXT,
+  requestBlocker,
+  riderEstimate,
+} from '@/lib/booking';
+import {
+  cancelRequest,
+  cancelTrip,
+  fetchMyRequest,
+  fetchPaymentHandles,
+  fetchRequestsForTrip,
+  fetchTripRiders,
+  reportDriverNoShow,
+  respondToRequest,
+  setNoShow,
+  setRequestPaid,
+} from '@/lib/booking-api';
 import { LUGGAGE_OPTIONS } from '@/lib/config';
 import { firstName, formatDeparture, formatDuration, formatFlex, formatMoney } from '@/lib/format';
 import { decodePolyline } from '@/lib/geo';
+import { errorHaptic, successHaptic, tapHaptic } from '@/lib/haptics';
+import type { PaymentMethods } from '@/lib/payments';
+import type { Reliability } from '@/lib/reliability';
+import { fetchReliability } from '@/lib/reliability-api';
 import { fetchTrip } from '@/lib/trips-api';
 import type { RequestWithRider, TripRequest, TripRider, TripWithDriver } from '@/lib/types';
 import { useAuth } from '@/providers/auth-provider';
@@ -29,20 +58,27 @@ type Loaded = {
   riders: TripRider[];
   requests: RequestWithRider[]; // driver only
   myRequest: TripRequest | null; // rider only
+  handles: PaymentMethods | null; // driver's pay handles, approved riders only
+  reliability: Record<string, Reliability>; // driver + people requesting
   loadedAt: Date; // "now" for deciding if the trip has left
 };
 
 async function loadTripPage(tripId: string, userId: string): Promise<Loaded> {
   const trip = await fetchTrip(tripId);
   const loadedAt = new Date();
-  if (!trip) return { trip: null, riders: [], requests: [], myRequest: null, loadedAt };
+  if (!trip) return { trip: null, riders: [], requests: [], myRequest: null, handles: null, reliability: {}, loadedAt };
   const isDriver = trip.driver_id === userId;
   const [riders, requests, myRequest] = await Promise.all([
     fetchTripRiders(tripId),
     isDriver ? fetchRequestsForTrip(tripId) : Promise.resolve([]),
     isDriver ? Promise.resolve(null) : fetchMyRequest(tripId, userId),
   ]);
-  return { trip, riders, requests, myRequest, loadedAt };
+  const owes = myRequest !== null && (myRequest.status === 'approved' || myRequest.late_cancel);
+  const [handles, reliability] = await Promise.all([
+    owes ? fetchPaymentHandles(tripId) : Promise.resolve(null),
+    fetchReliability([trip.driver_id, ...requests.map((request) => request.rider_id)]),
+  ]);
+  return { trip, riders, requests, myRequest, handles, reliability, loadedAt };
 }
 
 export default function TripDetailScreen() {
@@ -73,14 +109,18 @@ export default function TripDetailScreen() {
     }, [reload]),
   );
 
-  // Run a booking action, then refresh the page.
+  // Run a booking action, then refresh the page. Approving and marking paid get
+  // a "success" vibration; everything else (decline, cancel, undo) a light tap.
   async function run(key: string, action: () => Promise<void>) {
     setBusy(key);
     setActionError('');
     try {
       await action();
+      if (key.startsWith('approve') || key.startsWith('paid')) successHaptic();
+      else tapHaptic();
       await reload();
     } catch (err) {
+      errorHaptic();
       setActionError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setBusy(null);
@@ -108,7 +148,7 @@ export default function TripDetailScreen() {
       </Screen>
     );
   }
-  const { trip, riders, requests, myRequest, loadedAt } = data;
+  const { trip, riders, requests, myRequest, handles, reliability, loadedAt } = data;
   if (!trip) {
     return (
       <Screen edges={['bottom']}>
@@ -130,6 +170,16 @@ export default function TripDetailScreen() {
   const pendingRequests = requests.filter((request) => request.status === 'pending');
   const blocker = requestBlocker(trip, userId, myRequest, loadedAt);
   const myRequestOpen = myRequest?.status === 'pending' || myRequest?.status === 'approved';
+  const departed = departure.getTime() <= loadedAt.getTime(); // payments open once the trip leaves
+  const approvedRequests = requests.filter((request) => request.status === 'approved');
+  // Everyone who owes a share: approved riders plus late cancellers.
+  const payingRequests = requests.filter((request) => request.status === 'approved' || request.late_cancel);
+  const iOwe = myRequest !== null && (myRequest.status === 'approved' || myRequest.late_cancel);
+  const driverName = firstName(trip.driver.full_name);
+  const lateNow = isWithin24Hours(trip, loadedAt);
+  const cancelCutoff = new Date(departure.getTime() - 24 * 60 * 60 * 1000);
+  // No-shows can be reported for 7 days after the trip leaves.
+  const canReport = departed && loadedAt.getTime() - departure.getTime() < 7 * 24 * 60 * 60 * 1000;
   const canCancelTrip = isMyTrip && isUpcoming(trip, loadedAt);
 
   return (
@@ -163,18 +213,28 @@ export default function TripDetailScreen() {
         <Card>
           <View style={styles.spread}>
             <Label>Your request</Label>
-            <Badge label={REQUEST_STATUS_TEXT[myRequest.status]} tone={statusTone(myRequest.status)} />
+            <Badge
+              label={myRequest.late_cancel ? 'Late cancel' : REQUEST_STATUS_TEXT[myRequest.status]}
+              tone={myRequest.late_cancel ? 'bad' : statusTone(myRequest.status)}
+            />
           </View>
           {myRequest.dropoff_name && <IconRow icon="flag-outline" text={`Getting off at ${myRequest.dropoff_name}`} />}
-          {myRequestOpen && (
+          {myRequestOpen && !departed && (
             <Body muted>
               Your share right now: about {formatMoney(riderEstimate(trip, myRequest.rider_miles, myRequest.status === 'approved').now)}. It drops if more riders join.
             </Body>
           )}
-          {myRequest.status === 'approved' && (
-            <Body muted>Group chat and payment arrive in the next update. Meet at {trip.pickup_spot}.</Body>
+          {myRequest.status === 'approved' && !departed && (
+            <IconRow
+              muted
+              icon={lateNow ? 'alert-circle-outline' : 'shield-checkmark-outline'}
+              text={lateNow ? 'Less than 24 hours to go: cancelling now counts as a late cancel.' : `Free to cancel until ${formatDeparture(cancelCutoff)}`}
+            />
           )}
-          {myRequestOpen && trip.status === 'scheduled' && (
+          {myRequest.status === 'approved' && (
+            <Button title="Open group chat" variant="secondary" onPress={() => router.push(`/chat/${trip.id}`)} />
+          )}
+          {myRequestOpen && trip.status === 'scheduled' && !departed && (
             <Button
               title={myRequest.status === 'approved' ? 'Leave this trip' : 'Cancel request'}
               variant="secondary"
@@ -182,7 +242,9 @@ export default function TripDetailScreen() {
               onPress={() =>
                 confirm(
                   myRequest.status === 'approved' ? 'Leave this trip?' : 'Cancel your request?',
-                  `${firstName(trip.driver.full_name)} will see that you're no longer coming.`,
+                  myRequest.status === 'approved' && lateNow
+                    ? `It's less than 24 hours before the trip, so this counts as a late cancel on your reliability. You'll still owe your share (about ${formatMoney(riderEstimate(trip, myRequest.rider_miles, true).now)}) so the others don't pay more.`
+                    : `${driverName} will see that you're no longer coming.${myRequest.status === 'approved' ? ' Cancelling more than 24 hours ahead is free.' : ''}`,
                   myRequest.status === 'approved' ? 'Leave trip' : 'Cancel request',
                   () => run('cancel-request', () => cancelRequest(myRequest.id)),
                 )
@@ -192,19 +254,132 @@ export default function TripDetailScreen() {
         </Card>
       )}
 
+      {/* Rider: pay the driver once the trip has left (late cancellers too) */}
+      {!isMyTrip && myRequest && iOwe && trip.status !== 'cancelled' && (
+        <Card>
+          <Label>Pay {driverName}</Label>
+          {myRequest.driver_no_show ? (
+            <>
+              <IconRow icon="alert-circle-outline" text={`You reported that ${driverName} didn't show up, so you don't need to pay.`} />
+              {canReport && (
+                <Button
+                  title="Undo report"
+                  variant="ghost"
+                  loading={busy === 'driver-no-show'}
+                  onPress={() => run('driver-no-show', () => reportDriverNoShow(trip.id, false))}
+                />
+              )}
+            </>
+          ) : !departed ? (
+            <Body muted>
+              {myRequest.late_cancel
+                ? `You cancelled within 24 hours, so you still owe your share so the others don't pay more. After the trip leaves, you can pay ${driverName} right here.`
+                : `After the ride, you'll pay your share right here, about ${formatMoney(riderEstimate(trip, myRequest.rider_miles, true).now)} based on who's riding now.`}
+            </Body>
+          ) : myRequest.paid_at ? (
+            <IconRow icon="checkmark-circle" text={`Paid. ${driverName} marked your ${formatMoney(amountOwed(trip, myRequest))} as received.`} />
+          ) : (
+            <>
+              <View style={styles.amountRow}>
+                <Text style={[styles.amount, { color: colors.text }]}>{formatMoney(amountOwed(trip, myRequest))}</Text>
+                <Body muted>your share of the gas</Body>
+              </View>
+              <Body muted style={{ fontSize: 13 }}>
+                Split {payingRiders(trip) + 1} ways{myRequest.rider_miles ? `, for your ${myRequest.rider_miles} miles` : ''}. {driverName} will mark you paid.
+              </Body>
+              <PayButtons handles={handles} amount={amountOwed(trip, myRequest)} note={paymentNote(trip)} driverName={driverName} />
+              {myRequest.status === 'approved' && canReport && (
+                <Button
+                  title={`${driverName} didn't show up?`}
+                  variant="ghost"
+                  loading={busy === 'driver-no-show'}
+                  onPress={() =>
+                    confirm(
+                      `Report that ${driverName} didn't show?`,
+                      "This counts against their reliability, and you won't be asked to pay. Only report it if the trip didn't happen.",
+                      'Report',
+                      () => run('driver-no-show', () => reportDriverNoShow(trip.id, true)),
+                    )
+                  }
+                />
+              )}
+            </>
+          )}
+        </Card>
+      )}
+
+      {/* Driver: group chat and payments */}
+      {isMyTrip && approvedRequests.length > 0 && trip.status !== 'cancelled' && (
+        <Button title="Open group chat" variant="secondary" onPress={() => router.push(`/chat/${trip.id}`)} />
+      )}
+      {isMyTrip && departed && payingRequests.length > 0 && trip.status !== 'cancelled' && (
+        <Card>
+          <Label>Payments</Label>
+          <Body muted style={{ fontSize: 13 }}>
+            Gas split {payingRiders(trip) + 1} ways. Tap Mark paid when the money arrives. If a rider never came, tap No-show.
+          </Body>
+          {payingRequests.map((request) => (
+            <View key={request.id} style={{ gap: Spacing.xs }}>
+              <View style={styles.paymentRow}>
+                <Avatar uri={request.rider.avatar_url} name={request.rider.full_name} size={36} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontWeight: '600' }}>{request.rider.full_name}</Text>
+                  <Body muted style={{ fontSize: 14 }}>
+                    {formatMoney(amountOwed(trip, request))}
+                    {request.paid_at ? ' · Paid' : ' · Not paid yet'}
+                    {request.late_cancel ? ' · Late cancel' : ''}
+                    {request.no_show ? ' · No-show' : ''}
+                  </Body>
+                  {request.driver_no_show && <Body style={{ fontSize: 13, color: colors.danger }}>Reported that you didn&apos;t show</Body>}
+                </View>
+                <View style={{ width: 120 }}>
+                  <Button
+                    title={request.paid_at ? 'Undo' : 'Mark paid'}
+                    variant={request.paid_at ? 'ghost' : 'primary'}
+                    loading={busy === `${request.paid_at ? 'unpay' : 'paid'}-${request.id}`}
+                    disabled={busy !== null}
+                    onPress={() => run(`${request.paid_at ? 'unpay' : 'paid'}-${request.id}`, () => setRequestPaid(request.id, !request.paid_at))}
+                  />
+                </View>
+              </View>
+              {request.status === 'approved' && canReport && (
+                <Button
+                  title={request.no_show ? 'Undo no-show' : `${firstName(request.rider.full_name)} didn't show up`}
+                  variant="ghost"
+                  loading={busy === `noshow-${request.id}`}
+                  disabled={busy !== null}
+                  onPress={() =>
+                    request.no_show
+                      ? run(`noshow-${request.id}`, () => setNoShow(request.id, false))
+                      : confirm(
+                          `Mark ${firstName(request.rider.full_name)} as a no-show?`,
+                          'This counts against their reliability. They still owe their share, since they held a seat.',
+                          'Mark no-show',
+                          () => run(`noshow-${request.id}`, () => setNoShow(request.id, true)),
+                        )
+                  }
+                />
+              )}
+            </View>
+          ))}
+        </Card>
+      )}
+
       {/* Driver: requests waiting for an answer (screen 6) */}
       {isMyTrip && pendingRequests.length > 0 && (
         <View style={{ gap: Spacing.sm }}>
           <Label>Requests waiting for you ({pendingRequests.length})</Label>
-          {pendingRequests.map((request) => (
+          {pendingRequests.map((request, index) => (
+            <AnimatedItem key={request.id} index={index}>
             <RequestCard
-              key={request.id}
               request={request}
+              reliability={reliability[request.rider_id]}
               trip={trip}
               busy={busy}
               onApprove={() => run(`approve-${request.id}`, () => respondToRequest(request.id, true))}
               onDecline={() => run(`decline-${request.id}`, () => respondToRequest(request.id, false))}
             />
+            </AnimatedItem>
           ))}
         </View>
       )}
@@ -254,17 +429,22 @@ export default function TripDetailScreen() {
           <View style={{ flex: 1 }}>
             <Text style={[styles.name, { color: colors.text }]}>{trip.driver.full_name}</Text>
             {details ? <Body muted>{details}</Body> : null}
-            <Body muted>New driver</Body>
+            <ReliabilityBadge stats={reliability[trip.driver_id]} />
           </View>
         </View>
         {trip.driver.bio ? <Body>{trip.driver.bio}</Body> : null}
-        <IconRow
-          muted
-          icon={trip.driver.chat_preference === 'quiet' ? 'volume-mute-outline' : 'chatbubbles-outline'}
-          text={trip.driver.chat_preference === 'quiet' ? 'Prefers a quiet ride' : 'Down to talk'}
-        />
+        <Label>Vibe check</Label>
+        <VibeMeters profile={trip.driver} />
         {trip.car ? (
-          <IconRow muted icon="car-sport-outline" text={`${trip.car.color} ${trip.car.make} ${trip.car.model} · Plate ${trip.car.plate}`} />
+          <View style={styles.carRow}>
+            <CarIllustration color={trip.car.color} width={130} />
+            <View style={{ flex: 1 }}>
+              <Body style={{ fontWeight: '600' }}>
+                {trip.car.color} {trip.car.make} {trip.car.model}
+              </Body>
+              <Body muted style={{ fontSize: 14 }}>Plate {trip.car.plate}</Body>
+            </View>
+          </View>
         ) : null}
       </Card>
 
@@ -289,7 +469,7 @@ export default function TripDetailScreen() {
         mpg={trip.mpg}
         gasPrice={trip.gas_price}
         seatsOffered={trip.seats_offered}
-        ridersBooked={trip.seats_booked}
+        ridersBooked={payingRiders(trip)}
         viewer={isMyTrip ? 'driver' : 'rider'}
       />
 
@@ -306,7 +486,9 @@ export default function TripDetailScreen() {
                 confirm(
                   'Cancel this trip?',
                   trip.seats_booked > 0
-                    ? `${trip.seats_booked} booked ${trip.seats_booked === 1 ? 'rider' : 'riders'} will see it was cancelled. This can't be undone.`
+                    ? `${trip.seats_booked} booked ${trip.seats_booked === 1 ? 'rider' : 'riders'} will see it was cancelled.${
+                        lateNow ? " It's less than 24 hours before the trip, so this counts as a late cancel on your reliability." : ''
+                      } This can't be undone.`
                     : "This can't be undone.",
                   'Cancel trip',
                   () => run('cancel-trip', () => cancelTrip(trip.id)),
@@ -335,12 +517,14 @@ function statusTone(status: TripRequest['status']) {
 // One rider's request, with Approve / Decline buttons for the driver.
 function RequestCard({
   request,
+  reliability,
   trip,
   busy,
   onApprove,
   onDecline,
 }: {
   request: RequestWithRider;
+  reliability: Reliability | undefined;
   trip: TripWithDriver;
   busy: string | null;
   onApprove: () => void;
@@ -357,8 +541,10 @@ function RequestCard({
         <View style={{ flex: 1 }}>
           <Text style={[styles.name, { color: colors.text }]}>{request.rider.full_name}</Text>
           {details ? <Body muted>{details}</Body> : null}
+          <ReliabilityBadge stats={reliability} />
         </View>
       </View>
+      <VibeMeters profile={request.rider} />
       <IconRow
         icon="flag-outline"
         text={request.dropoff_name ? `Getting off at ${request.dropoff_name} (${request.rider_miles} mi)` : 'Riding the whole way'}
@@ -416,6 +602,25 @@ const styles = StyleSheet.create({
   },
   buttons: {
     flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  carRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: Spacing.sm,
+  },
+  amount: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.sm,
   },
 });

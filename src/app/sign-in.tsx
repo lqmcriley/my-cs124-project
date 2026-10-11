@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase';
 const CODE_MIN_LENGTH = 6;
 const CODE_MAX_LENGTH = 8;
 
-const NOT_UIUC_MESSAGE = 'Halfsies is only for UIUC students. Please use your @illinois.edu email.';
+const NOT_UIUC_MESSAGE = 'Hitch Illini is only for UIUC students. Please use your @illinois.edu email.';
 
 // Turn Supabase's technical errors into something a person can act on.
 function friendlyError(message: string): string {

@@ -30,8 +30,8 @@ describe('handleError', () => {
 
 describe('pay links', () => {
   it('fills in the amount and note', () => {
-    expect(venmoPayLink('alma-mater', 8.7, "Halfsies: O'Hare Oct 20")).toBe(
-      "venmo://paycharge?txn=pay&recipients=alma-mater&amount=8.70&note=Halfsies%3A%20O'Hare%20Oct%2020",
+    expect(venmoPayLink('alma-mater', 8.7, "Hitch Illini: O'Hare Oct 20")).toBe(
+      "venmo://paycharge?txn=pay&recipients=alma-mater&amount=8.70&note=Hitch%20Illini%3A%20O'Hare%20Oct%2020",
     );
     expect(venmoWebLink('alma-mater', 8.7, 'Gas')).toBe('https://venmo.com/alma-mater?txn=pay&amount=8.70&note=Gas');
     expect(cashAppLink('AlmaM', 8.7)).toBe('https://cash.app/$AlmaM/8.70');

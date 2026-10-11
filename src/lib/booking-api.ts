@@ -3,6 +3,7 @@
 // which check every rule on the server.
 
 import type { Place } from './config';
+import type { PaymentMethods } from './payments';
 import { supabase } from './supabase';
 import { TRIP_WITH_DRIVER } from './trips-api';
 import type { RequestWithRider, RequestWithTrip, TripRequest, TripRider, TripWithDriver } from './types';
@@ -53,7 +54,7 @@ export async function fetchTripRiders(tripId: string): Promise<TripRider[]> {
 export async function fetchRequestsForTrip(tripId: string): Promise<RequestWithRider[]> {
   const { data, error } = await supabase
     .from('trip_requests')
-    .select('*, rider:profiles (id, full_name, avatar_url, year, major, chat_preference)')
+    .select('*, rider:profiles (*)')
     .eq('trip_id', tripId)
     .order('created_at', { ascending: false });
   if (error) throw new Error(`Couldn't load requests: ${error.message}`);
@@ -87,7 +88,8 @@ export async function fetchMyTrips(userId: string): Promise<MyTrips> {
       .from('trip_requests')
       .select(`*, trip:trips (${TRIP_WITH_DRIVER})`)
       .eq('rider_id', userId)
-      .neq('status', 'cancelled')
+      // Hide cancelled requests, except late cancels: those riders still owe their share.
+      .or('status.neq.cancelled,late_cancel.eq.true')
       .order('created_at', { ascending: false }),
   ]);
   if (drivingResult.error) throw new Error(`Couldn't load your trips: ${drivingResult.error.message}`);
@@ -110,4 +112,30 @@ export async function fetchMyTrips(userId: string): Promise<MyTrips> {
     driving: driving.map((trip) => ({ ...trip, pendingCount: pending[trip.id] ?? 0 })),
     riding: ridingResult.data as RequestWithTrip[],
   };
+}
+
+// The driver's Venmo / Cash App / PayPal, only returned to approved riders of this trip.
+export async function fetchPaymentHandles(tripId: string): Promise<PaymentMethods | null> {
+  const { data, error } = await supabase.rpc('trip_payment_handles', { p_trip_id: tripId });
+  if (error) throw new Error(`Couldn't load payment options: ${error.message}`);
+  const row = (data ?? [])[0] as PaymentMethods | undefined;
+  return row ?? null;
+}
+
+// Driver: mark a rider as paid (or undo it).
+export async function setRequestPaid(requestId: string, paid: boolean): Promise<void> {
+  const { error } = await supabase.rpc('set_request_paid', { p_request_id: requestId, p_paid: paid });
+  if (error) throw new Error(error.message);
+}
+
+// Driver: after the trip, mark a rider who never came (or undo it).
+export async function setNoShow(requestId: string, noShow: boolean): Promise<void> {
+  const { error } = await supabase.rpc('set_no_show', { p_request_id: requestId, p_no_show: noShow });
+  if (error) throw new Error(error.message);
+}
+
+// Rider: after the trip, report that the driver never came (or undo it).
+export async function reportDriverNoShow(tripId: string, noShow: boolean): Promise<void> {
+  const { error } = await supabase.rpc('report_driver_no_show', { p_trip_id: tripId, p_no_show: noShow });
+  if (error) throw new Error(error.message);
 }

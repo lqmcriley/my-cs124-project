@@ -1,4 +1,4 @@
-# Halfsies
+# Hitch Illini
 
 **Split the ride. Split the gas.** A carpool app for UIUC students. Drivers post trips they're already taking, and riders book a seat and split the gas cost fairly. No profit, just sharing.
 

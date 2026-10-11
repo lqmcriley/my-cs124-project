@@ -1,15 +1,37 @@
-// The trip fields shared by "Post a trip" and "Edit trip": time, flexibility,
-// seats, luggage, notes and, for airport trips, flight + parking details.
+// The trip fields shared by "Post a trip" and "Edit trip", as fold-out sections:
+//   Airport (only for airport trips) · When · Seats & luggage · Notes
+// Each section shows a one-line summary when closed.
 
 import { StyleSheet, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
-import { Body, Button, Card, Chip, ErrorText, IconRow, Label, TextField } from '@/components/ui';
+import { FoldSection } from '@/components/fold-section';
+import { Body, Button, Chip, ErrorText, IconRow, Label, SegmentedControl, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { suggestedLeaveTime, terminalArrival } from '@/lib/airport';
 import { FLEX_WINDOWS, LUGGAGE_OPTIONS, SHUTTLE_MINUTE_OPTIONS, TRIP_NOTES_MAX_LENGTH } from '@/lib/config';
-import { formatDeparture } from '@/lib/format';
+import { formatDeparture, formatFlex, formatTime } from '@/lib/format';
 import type { TripFormErrors, TripFormValues } from '@/lib/trip-form';
+
+export type TripSection = 'where' | 'airport' | 'when' | 'seats' | 'notes' | 'gas';
+
+// Which form fields live in which section (used to open sections that have errors).
+const SECTION_FIELDS: Record<TripSection, (keyof TripFormValues)[]> = {
+  where: ['from', 'to', 'route'],
+  airport: ['flightNumber', 'flightDepartsAt', 'parkingLocation'],
+  when: ['departure'],
+  seats: ['seats'],
+  notes: ['notes'],
+  gas: ['gasPrice'],
+};
+
+export function sectionHasError(section: TripSection, errors: TripFormErrors): boolean {
+  return SECTION_FIELDS[section].some((field) => errors[field]);
+}
+
+export function sectionsWithErrors(errors: TripFormErrors): TripSection[] {
+  return (Object.keys(SECTION_FIELDS) as TripSection[]).filter((section) => sectionHasError(section, errors));
+}
 
 type Props = {
   values: TripFormValues;
@@ -17,12 +39,15 @@ type Props = {
   set: <K extends keyof TripFormValues>(field: K, value: TripFormValues[K]) => void;
   maxSeats: number;
   minSeats?: number; // can't go below riders already approved
+  open: Partial<Record<TripSection, boolean>>;
+  toggle: (section: TripSection) => void;
 };
 
-export function TripDetailsFields({ values, errors, set, maxSeats, minSeats = 1 }: Props) {
+export function TripDetailsFields({ values, errors, set, maxSeats, minSeats = 1, open, toggle }: Props) {
   const isAirport = values.to?.isAirport === true;
   const driveMinutes = values.route?.minutes ?? null;
   const shuttleMinutes = values.parking === 'offsite' ? values.shuttleMinutes : 0;
+  const luggage = LUGGAGE_OPTIONS.find((option) => option.value === values.luggage)?.label ?? '';
 
   const suggestion =
     isAirport && values.flightDepartsAt && driveMinutes !== null
@@ -39,13 +64,26 @@ export function TripDetailsFields({ values, errors, set, maxSeats, minSeats = 1 
       ? terminalArrival({ departure: values.departure, driveMinutes, shuttleMinutes })
       : null;
 
+  const airportSummary =
+    [
+      values.flightNumber.trim().toUpperCase() || null,
+      values.flightDepartsAt ? `flight at ${formatTime(values.flightDepartsAt)}` : null,
+      values.parking === 'offsite' ? 'Park + shuttle' : 'Drop-off at terminal',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
   return (
     <View style={styles.group}>
       {isAirport && (
-        <Card>
-          <Label>Airport trip</Label>
+        <FoldSection
+          title="Airport"
+          icon="airplane-outline"
+          summary={airportSummary}
+          open={!!open.airport}
+          onToggle={() => toggle('airport')}
+          hasError={sectionHasError('airport', errors)}>
           <Body muted>Add your flight and we&apos;ll suggest when to leave. Riders see this so they can match their own flights.</Body>
-
           <DateTimeField
             label="Your flight departs"
             mode="datetime"
@@ -65,16 +103,24 @@ export function TripDetailsFields({ values, errors, set, maxSeats, minSeats = 1 
             maxLength={10}
             error={errors.flightNumber}
           />
-          <View style={styles.chips}>
-            <Chip label="Domestic" selected={!values.flightInternational} onPress={() => set('flightInternational', false)} />
-            <Chip label="International" selected={values.flightInternational} onPress={() => set('flightInternational', true)} />
-          </View>
+          <SegmentedControl
+            options={[
+              { value: 'domestic', label: 'Domestic' },
+              { value: 'international', label: 'International' },
+            ]}
+            value={values.flightInternational ? 'international' : 'domestic'}
+            onChange={(kind) => set('flightInternational', kind === 'international')}
+          />
 
           <Label>Getting to the terminal</Label>
-          <View style={styles.chips}>
-            <Chip label="Drop-off at terminal" icon="airplane-outline" selected={values.parking === 'terminal'} onPress={() => set('parking', 'terminal')} />
-            <Chip label="Park + shuttle" icon="bus-outline" selected={values.parking === 'offsite'} onPress={() => set('parking', 'offsite')} />
-          </View>
+          <SegmentedControl
+            options={[
+              { value: 'terminal', label: 'Drop-off', icon: 'airplane-outline' },
+              { value: 'offsite', label: 'Park + shuttle', icon: 'bus-outline' },
+            ]}
+            value={values.parking}
+            onChange={(parking) => set('parking', parking)}
+          />
           {values.parking === 'offsite' && (
             <>
               <TextField
@@ -85,11 +131,11 @@ export function TripDetailsFields({ values, errors, set, maxSeats, minSeats = 1 
                 error={errors.parkingLocation}
               />
               <Label>Shuttle to the terminal takes about</Label>
-              <View style={styles.chips}>
-                {SHUTTLE_MINUTE_OPTIONS.map((minutes) => (
-                  <Chip key={minutes} label={`${minutes} min`} selected={values.shuttleMinutes === minutes} onPress={() => set('shuttleMinutes', minutes)} />
-                ))}
-              </View>
+              <SegmentedControl
+                options={SHUTTLE_MINUTE_OPTIONS.map((minutes) => ({ value: minutes as number, label: `${minutes} min` }))}
+                value={values.shuttleMinutes}
+                onChange={(minutes) => set('shuttleMinutes', minutes)}
+              />
               <Body muted>Riders see this as a heads-up before they request a seat.</Body>
             </>
           )}
@@ -101,62 +147,84 @@ export function TripDetailsFields({ values, errors, set, maxSeats, minSeats = 1 
                 {values.flightInternational ? '3 hr' : '2 hr'} before your flight, plus the drive
                 {shuttleMinutes ? `, ${shuttleMinutes} min shuttle` : ''} and 30 min for traffic.
               </Body>
-              <Button title="Use this time" variant="secondary" onPress={() => set('departure', suggestion)} />
+              <Button title="Use this time" icon="checkmark" variant="secondary" onPress={() => set('departure', suggestion)} />
             </View>
           )}
-        </Card>
+        </FoldSection>
       )}
 
-      <DateTimeField
-        label="Leaving at"
-        mode="datetime"
-        value={values.departure}
-        onChange={(date) => set('departure', date)}
-        placeholder="Pick a date and time"
-        minimumDate={new Date()}
-        error={errors.departure}
-      />
-      {arrival && <IconRow icon="airplane-outline" muted text={`At the terminal around ${formatDeparture(arrival)}`} />}
+      <FoldSection
+        title="When"
+        icon="time-outline"
+        summary={values.departure ? `${formatDeparture(values.departure)} · ${formatFlex(values.flexMinutes)}` : 'Pick a date and time'}
+        open={!!open.when}
+        onToggle={() => toggle('when')}
+        hasError={sectionHasError('when', errors)}>
+        <DateTimeField
+          label="Leaving at"
+          mode="datetime"
+          value={values.departure}
+          onChange={(date) => set('departure', date)}
+          placeholder="Pick a date and time"
+          minimumDate={new Date()}
+          error={errors.departure}
+        />
+        {arrival && <IconRow icon="airplane-outline" muted text={`At the terminal around ${formatDeparture(arrival)}`} />}
+        <Label>Flexible by</Label>
+        <SegmentedControl
+          options={FLEX_WINDOWS.map((window) => ({ value: window.minutes, label: window.label }))}
+          value={values.flexMinutes}
+          onChange={(minutes) => set('flexMinutes', minutes)}
+        />
+      </FoldSection>
 
-      <Label>Flexible by</Label>
-      <View style={styles.chips}>
-        {FLEX_WINDOWS.map((window) => (
-          <Chip key={window.minutes} label={window.label} selected={values.flexMinutes === window.minutes} onPress={() => set('flexMinutes', window.minutes)} />
-        ))}
-      </View>
+      <FoldSection
+        title="Seats & luggage"
+        icon="people-outline"
+        summary={`${values.seats} ${values.seats === 1 ? 'seat' : 'seats'} · ${luggage}`}
+        open={!!open.seats}
+        onToggle={() => toggle('seats')}
+        hasError={sectionHasError('seats', errors)}>
+        <Label>Seats offered</Label>
+        <SegmentedControl
+          options={Array.from({ length: maxSeats - minSeats + 1 }, (_, i) => i + minSeats).map((count) => ({ value: count, label: String(count) }))}
+          value={values.seats}
+          onChange={(count) => set('seats', count)}
+        />
+        {minSeats > 1 && <Body muted>You&apos;ve approved {minSeats} riders, so you can&apos;t offer fewer seats.</Body>}
+        <ErrorText>{errors.seats}</ErrorText>
+        <Label>Luggage space per rider</Label>
+        <View style={styles.chips}>
+          {LUGGAGE_OPTIONS.map((option) => (
+            <Chip key={option.value} label={option.label} selected={values.luggage === option.value} onPress={() => set('luggage', option.value)} />
+          ))}
+        </View>
+      </FoldSection>
 
-      <Label>Seats offered</Label>
-      <View style={styles.chips}>
-        {Array.from({ length: maxSeats - minSeats + 1 }, (_, i) => i + minSeats).map((count) => (
-          <Chip key={count} label={String(count)} selected={values.seats === count} onPress={() => set('seats', count)} />
-        ))}
-      </View>
-      {minSeats > 1 && <Body muted>You&apos;ve approved {minSeats} riders, so you can&apos;t offer fewer seats.</Body>}
-      <ErrorText>{errors.seats}</ErrorText>
-
-      <Label>Luggage space per rider</Label>
-      <View style={styles.chips}>
-        {LUGGAGE_OPTIONS.map((option) => (
-          <Chip key={option.value} label={option.label} selected={values.luggage === option.value} onPress={() => set('luggage', option.value)} />
-        ))}
-      </View>
-
-      <TextField
-        label="Notes (optional)"
-        placeholder="e.g. Meeting at the north entrance. Can stop for food."
-        value={values.notes}
-        onChangeText={(text) => set('notes', text)}
-        multiline
-        maxLength={TRIP_NOTES_MAX_LENGTH}
-        error={errors.notes}
-      />
+      <FoldSection
+        title="Notes"
+        icon="chatbox-ellipses-outline"
+        summary={values.notes.trim() || 'Optional: meeting spot, stops, rules'}
+        open={!!open.notes}
+        onToggle={() => toggle('notes')}
+        hasError={sectionHasError('notes', errors)}>
+        <TextField
+          label="Notes for riders"
+          placeholder="e.g. Meeting at the north entrance. Can stop for food."
+          value={values.notes}
+          onChangeText={(text) => set('notes', text)}
+          multiline
+          maxLength={TRIP_NOTES_MAX_LENGTH}
+          error={errors.notes}
+        />
+      </FoldSection>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   group: {
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   chips: {
     flexDirection: 'row',

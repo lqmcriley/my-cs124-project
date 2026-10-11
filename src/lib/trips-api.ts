@@ -4,10 +4,10 @@ import { supabase } from './supabase';
 import type { TripWithDriver } from './types';
 import type { toTripRow, toTripUpdate } from './trip-form';
 
-// Load the driver's public profile and car alongside each trip.
+// Load the driver's public profile (name, photo, vibes...) and car alongside each trip.
 export const TRIP_WITH_DRIVER = `
   *,
-  driver:profiles (id, full_name, avatar_url, year, major, bio, chat_preference),
+  driver:profiles (*),
   car:cars (make, model, color, plate, seats)
 `;
 

@@ -1,4 +1,4 @@
-// The Halfsies logo: a circle split in half (orange + navy), like a ride split two ways.
+// The Hitch Illini logo: a circle split in half (orange + navy), like a ride split two ways.
 
 import { StyleSheet, View } from 'react-native';
 
@@ -8,12 +8,12 @@ import { useTheme } from '@/hooks/use-theme';
 export function Logo({ size = 96 }: { size?: number }) {
   const colors = useTheme();
   return (
-    <View style={styles.wrapper} accessibilityRole="image" accessibilityLabel="Halfsies logo">
+    <View style={styles.wrapper} accessibilityRole="image" accessibilityLabel="Hitch Illini logo">
       <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2 }]}>
         <View style={[styles.half, { backgroundColor: '#FF6B35' }]} />
         <View style={[styles.half, { backgroundColor: '#13294B' }]} />
       </View>
-      <Text style={[styles.wordmark, { color: colors.text }]}>Halfsies</Text>
+      <Text style={[styles.wordmark, { color: colors.text }]}>Hitch Illini</Text>
     </View>
   );
 }

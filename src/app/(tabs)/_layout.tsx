@@ -10,7 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 export default function TabLayout() {
   const colors = useTheme();
   return (
-    <NativeTabs tintColor={colors.primary} minimizeBehavior="onScrollDown" labelStyle={{ fontFamily: FontFamily }}>
+    <NativeTabs tintColor={colors.primary} minimizeBehavior="never" labelStyle={{ fontFamily: FontFamily }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Find a ride</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />

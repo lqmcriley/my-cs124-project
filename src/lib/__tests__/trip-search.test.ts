@@ -40,6 +40,9 @@ function trip(id: string, to: { latitude: number; longitude: number }, departure
     parking_location: null,
     shuttle_minutes: 0,
     seats_booked: 0,
+    late_cancel_count: 0,
+    cancelled_at: null,
+    driver_late_cancel: false,
     ...extra,
   };
 }

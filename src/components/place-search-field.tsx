@@ -4,10 +4,12 @@
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
-import { Body, ErrorText, Label, Text, TextField } from '@/components/ui';
-import { Radius, Spacing, TapTarget } from '@/constants/theme';
+import { PressableScale } from '@/components/motion';
+import { Body, ErrorText, Label, Text } from '@/components/ui';
+import { FontFamily, Radius, Spacing, TapTarget } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Place } from '@/lib/config';
 import { autocomplete, newSessionToken, placeDetails, Suggestion } from '@/lib/maps';
@@ -30,6 +32,8 @@ export function PlaceSearchField({ label, value, onChange, placeholder, error, c
   const [sessionToken, setSessionToken] = useState(newSessionToken);
   const [searchError, setSearchError] = useState('');
   const [picking, setPicking] = useState(false);
+  const [focused, setFocused] = useState(false); // orange outline while typing
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   const searching = query.trim().length >= MIN_CHARACTERS;
 
@@ -43,9 +47,12 @@ export function PlaceSearchField({ label, value, onChange, placeholder, error, c
           if (stale) return;
           setSuggestions(results);
           setSearchError('');
+          setLoadingSuggestions(false);
         })
         .catch((err: Error) => {
-          if (!stale) setSearchError(err.message);
+          if (stale) return;
+          setSearchError(err.message);
+          setLoadingSuggestions(false);
         });
     }, 300);
     return () => {
@@ -69,24 +76,29 @@ export function PlaceSearchField({ label, value, onChange, placeholder, error, c
     }
   }
 
-  // Something is picked: show it with a "Change" button.
+  // Something is picked: show it as a pill with a "Change" button.
   if (value) {
     return (
       <View style={{ gap: Spacing.xs }}>
         <Label>{label}</Label>
-        <View style={[styles.selected, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
-          <Ionicons name="location" size={22} color={colors.primary} />
+        <View style={[styles.bar, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
+          <Ionicons name="location" size={20} color={colors.primary} />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.selectedName, { color: colors.text }]} numberOfLines={1}>
+            <Text style={[styles.mainText, { color: colors.text }]} numberOfLines={1}>
               {value.name}
             </Text>
-            <Text style={{ color: colors.textSecondary }} numberOfLines={1}>
+            <Text style={[styles.secondaryText, { color: colors.textSecondary }]} numberOfLines={1}>
               {value.address}
             </Text>
           </View>
-          <Pressable onPress={() => onChange(null)} accessibilityRole="button" accessibilityLabel={`Change ${label}`} hitSlop={12}>
-            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>Change</Text>
-          </Pressable>
+          <PressableScale
+            onPress={() => onChange(null)}
+            accessibilityRole="button"
+            accessibilityLabel={`Change ${label}`}
+            hitSlop={10}
+            style={[styles.changeButton, { backgroundColor: colors.track }]}>
+            <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>Change</Text>
+          </PressableScale>
         </View>
       </View>
     );
@@ -94,70 +106,138 @@ export function PlaceSearchField({ label, value, onChange, placeholder, error, c
 
   return (
     <View style={{ gap: Spacing.sm }}>
-      <TextField
-        label={label}
-        placeholder={placeholder ?? 'Search an address or place'}
-        value={query}
-        onChangeText={setQuery}
-        autoCorrect={false}
-        error={error}
-      />
-      {children}
-      {picking && <ActivityIndicator color={colors.primary} />}
-      {searching && suggestions.length > 0 && (
-        <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.card }]}>
-          {suggestions.map((suggestion) => (
+      <View style={{ gap: Spacing.xs }}>
+        <Label>{label}</Label>
+        {/* The search bar: magnifying glass, text box, and a clear (x) button. */}
+        <View
+          style={[
+            styles.bar,
+            {
+              backgroundColor: colors.inputBackground,
+              borderColor: error ? colors.danger : focused ? colors.primary : colors.border,
+              borderWidth: focused ? 1.5 : 1,
+            },
+          ]}>
+          <Ionicons name="search" size={19} color={focused ? colors.primary : colors.textSecondary} />
+          <TextInput
+            value={query}
+            onChangeText={(text) => {
+              setQuery(text);
+              setLoadingSuggestions(text.trim().length >= MIN_CHARACTERS);
+            }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder={placeholder ?? 'Search an address or place'}
+            placeholderTextColor={colors.textSecondary}
+            autoCorrect={false}
+            returnKeyType="search"
+            accessibilityLabel={label}
+            style={[styles.input, { color: colors.text, fontFamily: FontFamily }]}
+          />
+          {(picking || (searching && loadingSuggestions)) && <ActivityIndicator color={colors.primary} />}
+          {query.length > 0 && (
             <Pressable
+              onPress={() => {
+                setQuery('');
+                setLoadingSuggestions(false);
+              }}
+              accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={10}>
+              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+            </Pressable>
+          )}
+        </View>
+        <ErrorText>{error}</ErrorText>
+      </View>
+
+      {searching && suggestions.length > 0 && (
+        <Animated.View entering={FadeIn.duration(150)} style={[styles.list, { borderColor: colors.border, backgroundColor: colors.card }]}>
+          {suggestions.map((suggestion, index) => (
+            <PressableScale
               key={suggestion.placeId}
+              scaleTo={0.98}
               onPress={() => pick(suggestion)}
               accessibilityRole="button"
-              style={({ pressed }) => [styles.row, { borderColor: colors.border, opacity: pressed ? 0.6 : 1 }]}>
-              <Text style={[styles.selectedName, { color: colors.text }]} numberOfLines={1}>
-                {suggestion.mainText}
-              </Text>
-              {suggestion.secondaryText ? (
-                <Text style={{ color: colors.textSecondary }} numberOfLines={1}>
-                  {suggestion.secondaryText}
+              style={[styles.row, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}>
+              <View style={[styles.pin, { backgroundColor: colors.track }]}>
+                <Ionicons name="location-outline" size={16} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.mainText, { color: colors.text }]} numberOfLines={1}>
+                  {suggestion.mainText}
                 </Text>
-              ) : null}
-            </Pressable>
+                {suggestion.secondaryText ? (
+                  <Text style={[styles.secondaryText, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {suggestion.secondaryText}
+                  </Text>
+                ) : null}
+              </View>
+            </PressableScale>
           ))}
-        </View>
+          <Body muted style={styles.attribution}>
+            Results powered by Google
+          </Body>
+        </Animated.View>
       )}
-      {searching && <Body muted style={styles.attribution}>Results powered by Google</Body>}
+      {searching && !loadingSuggestions && suggestions.length === 0 && !searchError && (
+        <Body muted style={{ fontSize: 14 }}>No matches yet. Try a city name or a full address.</Body>
+      )}
+      {!searching && children}
       <ErrorText>{searchError}</ErrorText>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  selected: {
-    minHeight: TapTarget,
-    borderWidth: 1,
-    borderRadius: Radius.md,
+  bar: {
+    minHeight: TapTarget + 4,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: 6,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
   },
-  selectedName: {
+  input: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 8,
+  },
+  changeButton: {
+    borderRadius: Radius.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  mainText: {
     fontSize: 15,
     fontWeight: '600',
   },
+  secondaryText: {
+    fontSize: 13,
+  },
   list: {
     borderWidth: 1,
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     overflow: 'hidden',
   },
   row: {
-    minHeight: TapTarget,
-    justifyContent: 'center',
+    minHeight: TapTarget + 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  pin: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   attribution: {
-    fontSize: 12,
+    fontSize: 11,
+    textAlign: 'right',
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.sm,
   },
 });

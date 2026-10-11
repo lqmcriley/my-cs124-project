@@ -5,8 +5,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { CarIllustration } from '@/components/car-illustration';
 import { PlaceSearchField } from '@/components/place-search-field';
-import { Body, Button, Card, Checkbox, Chip, ErrorText, Heading, IconRow, Label, Screen, Text, TextField } from '@/components/ui';
+import { Body, Button, Card, Checkbox, ErrorText, Heading, IconRow, Label, Screen, SegmentedControl, Text, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { terminalArrival } from '@/lib/airport';
@@ -14,6 +15,7 @@ import { requestSeat } from '@/lib/booking-api';
 import { riderEstimate } from '@/lib/booking';
 import type { Place } from '@/lib/config';
 import { firstName, formatDeparture, formatMoney } from '@/lib/format';
+import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { computeRoute } from '@/lib/maps';
 import { fetchTrip } from '@/lib/trips-api';
 import type { TripWithDriver } from '@/lib/types';
@@ -123,8 +125,10 @@ function RequestForm({ trip }: { trip: TripWithDriver }) {
         message,
         parkingAcknowledged: parkingOk,
       });
+      successHaptic();
       router.back();
     } catch (err) {
+      errorHaptic();
       setSaveError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setSaving(false);
@@ -140,13 +144,33 @@ function RequestForm({ trip }: { trip: TripWithDriver }) {
         <IconRow icon="time-outline" text={`Leaves ${formatDeparture(new Date(trip.departure_at))}`} />
         {arrival && <IconRow icon="airplane-outline" text={`At the terminal around ${formatDeparture(arrival)}`} />}
         <IconRow icon="person-outline" text={`Driving: ${trip.driver.full_name}`} />
+        {trip.car && (
+          <View style={{ alignItems: 'center', paddingTop: Spacing.sm }}>
+            <CarIllustration color={trip.car.color} width={200} />
+            <Body muted style={{ fontSize: 14 }}>
+              {trip.car.color} {trip.car.make} {trip.car.model}
+            </Body>
+          </View>
+        )}
       </View>
 
+      <Card>
+        <Label>Before you request</Label>
+        <Body muted>
+          Once you&apos;re approved, you can cancel for free until 24 hours before the trip. After that it counts as a late cancel on
+          your reliability, and you still owe your share so the others don&apos;t pay more.
+        </Body>
+      </Card>
+
       <Label>Where are you getting off?</Label>
-      <View style={styles.chips}>
-        <Chip label={`The whole way (${trip.dest_name})`} selected={wholeWay} onPress={() => setWholeWay(true)} />
-        <Chip label="Somewhere along the way" selected={!wholeWay} onPress={() => setWholeWay(false)} />
-      </View>
+      <SegmentedControl
+        options={[
+          { value: 'whole', label: `All the way` },
+          { value: 'early', label: 'Get off early' },
+        ]}
+        value={wholeWay ? 'whole' : 'early'}
+        onChange={(choice) => setWholeWay(choice === 'whole')}
+      />
       {!wholeWay && (
         <>
           <PlaceSearchField label="Drop-off" value={dropoff} onChange={chooseDropoff} placeholder="Search a town or address on the way" />

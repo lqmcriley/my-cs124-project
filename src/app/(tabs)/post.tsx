@@ -131,7 +131,7 @@ function PostTripForm({ car, driverId }: { car: Car; driverId: string }) {
     <Screen edges={['top']}>
       <Heading>Post a trip</Heading>
       <View style={styles.carRow}>
-        <CarIllustration color={car.color} width={150} />
+        <CarIllustration color={car.color} bodyType={car.body_type} width={150} />
         <View style={{ flex: 1 }}>
           <Body muted>You&apos;re driving your</Body>
           <Body style={{ fontWeight: '600' }}>

@@ -1,6 +1,6 @@
 // The rules for the profile + car form, kept separate from the screen so they're easy to test.
 
-import { BIO_MAX_LENGTH, MAX_MPG, MAX_PASSENGER_SEATS, MIN_MPG } from './config';
+import { BIO_MAX_LENGTH, CarBodyType, MAX_MPG, MAX_PASSENGER_SEATS, MIN_MPG } from './config';
 import { cleanHandle, handleError, PaymentMethods } from './payments';
 import type { Car, ClassYear, Profile } from './types';
 import { chatPreferenceFromVibe, Vibes, vibesFrom } from './vibes';
@@ -19,6 +19,7 @@ export type ProfileFormValues = {
   plate: string;
   mpg: string;
   seats: string;
+  bodyType: CarBodyType;
   // Payment handles (optional, private)
   venmo: string;
   cashapp: string;
@@ -45,6 +46,7 @@ export function initialFormValues(
     plate: car?.plate ?? '',
     mpg: car ? String(car.mpg) : '',
     seats: car ? String(car.seats) : '',
+    bodyType: car?.body_type ?? 'sedan',
     venmo: payment?.venmo_username ?? '',
     cashapp: payment?.cashapp_cashtag ?? '',
     paypal: payment?.paypal_username ?? '',
@@ -116,6 +118,7 @@ export function toCarRow(userId: string, values: ProfileFormValues) {
     plate: values.plate.trim().toUpperCase(),
     mpg: Number(values.mpg),
     seats: Number(values.seats),
+    body_type: values.bodyType,
   };
 }
 

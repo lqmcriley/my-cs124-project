@@ -146,7 +146,7 @@ function RequestForm({ trip }: { trip: TripWithDriver }) {
         <IconRow icon="person-outline" text={`Driving: ${trip.driver.full_name}`} />
         {trip.car && (
           <View style={{ alignItems: 'center', paddingTop: Spacing.sm }}>
-            <CarIllustration color={trip.car.color} width={200} />
+            <CarIllustration color={trip.car.color} bodyType={trip.car.body_type} width={200} />
             <Body muted style={{ fontSize: 14 }}>
               {trip.car.color} {trip.car.make} {trip.car.model}
             </Body>

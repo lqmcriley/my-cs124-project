@@ -3,15 +3,16 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Switch, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
+import { CarIllustration } from '@/components/car-illustration';
 import { PressableScale } from '@/components/motion';
 import { VibeSliders } from '@/components/vibes';
 import { Body, Button, Card, Chip, ErrorText, Label, Text, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { BIO_MAX_LENGTH, CLASS_YEARS } from '@/lib/config';
+import { BIO_MAX_LENGTH, CAR_BODY_TYPES, CLASS_YEARS } from '@/lib/config';
 import { PickedPhoto, saveProfile } from '@/lib/profile-api';
 import { initialFormValues, ProfileFormErrors, ProfileFormValues, validateProfileForm } from '@/lib/profile-form';
 import { useAuth } from '@/providers/auth-provider';
@@ -191,6 +192,30 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
               </View>
             </View>
             <Body muted>MPG is used to work out a fair gas split. Seats don&apos;t count you, the driver.</Body>
+
+            <Label>Body style</Label>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bodyTypes}>
+              {CAR_BODY_TYPES.map((option) => {
+                const selected = values.bodyType === option.value;
+                return (
+                  <PressableScale
+                    key={option.value}
+                    scaleTo={0.95}
+                    onPress={() => set('bodyType', option.value)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={option.label}
+                    style={[
+                      styles.bodyTile,
+                      { borderColor: selected ? colors.primary : colors.border, backgroundColor: colors.card },
+                      selected && { borderWidth: 2 },
+                    ]}>
+                    <CarIllustration color={values.color} bodyType={option.value} width={104} animate={false} />
+                    <Text style={{ color: selected ? colors.primary : colors.text, fontSize: 13, fontWeight: '600' }}>{option.label}</Text>
+                  </PressableScale>
+                );
+              })}
+            </ScrollView>
           </View>
         )}
       </Card>
@@ -268,5 +293,17 @@ const styles = StyleSheet.create({
   },
   column: {
     flex: 1,
+  },
+  bodyTypes: {
+    gap: Spacing.sm,
+    paddingVertical: 2,
+  },
+  bodyTile: {
+    alignItems: 'center',
+    gap: 2,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
   },
 });

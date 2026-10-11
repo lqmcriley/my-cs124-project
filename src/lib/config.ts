@@ -94,3 +94,15 @@ export const AIRPORT_ARRIVAL_BUFFER_MINUTES = { domestic: 120, international: 18
 export const AIRPORT_TRAFFIC_BUFFER_MINUTES = 30;
 
 export const SHUTTLE_MINUTE_OPTIONS = [10, 20, 30, 45] as const;
+
+// Car body styles for the car drawing (also checked in the database).
+export const CAR_BODY_TYPES = [
+  { value: 'sedan', label: 'Sedan' },
+  { value: 'hatchback', label: 'Hatchback' },
+  { value: 'suv', label: 'SUV' },
+  { value: 'pickup', label: 'Pickup' },
+  { value: 'minivan', label: 'Minivan' },
+  { value: 'coupe', label: 'Coupe' },
+] as const;
+
+export type CarBodyType = (typeof CAR_BODY_TYPES)[number]['value'];

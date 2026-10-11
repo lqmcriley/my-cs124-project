@@ -1,7 +1,7 @@
 // TypeScript shapes for rows in our database tables.
 // Keep these in sync with supabase/migrations/.
 
-import { CLASS_YEARS } from './config';
+import { CarBodyType, CLASS_YEARS } from './config';
 import type { VibeKey } from './vibes';
 
 export type ClassYear = (typeof CLASS_YEARS)[number];
@@ -26,6 +26,7 @@ export type Car = {
   plate: string;
   mpg: number;
   seats: number;
+  body_type?: CarBodyType; // drawing shape; optional for databases before the body-style migration
 };
 
 export type TripStatus = 'scheduled' | 'cancelled' | 'completed';
@@ -72,7 +73,7 @@ export type Trip = {
 // A trip plus the driver's public profile and car, as loaded for cards and the detail screen.
 export type TripWithDriver = Trip & {
   driver: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'year' | 'major' | 'bio' | 'chat_preference' | VibeKey>;
-  car: Pick<Car, 'make' | 'model' | 'color' | 'plate' | 'seats'> | null;
+  car: Pick<Car, 'make' | 'model' | 'color' | 'plate' | 'seats' | 'body_type'> | null;
 };
 
 export type RequestStatus = 'pending' | 'approved' | 'declined' | 'cancelled';

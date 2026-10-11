@@ -8,7 +8,7 @@ import type { toTripRow, toTripUpdate } from './trip-form';
 export const TRIP_WITH_DRIVER = `
   *,
   driver:profiles (*),
-  car:cars (make, model, color, plate, seats)
+  car:cars (*)
 `;
 
 export async function fetchUpcomingTrips(): Promise<TripWithDriver[]> {

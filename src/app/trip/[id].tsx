@@ -437,7 +437,7 @@ export default function TripDetailScreen() {
         <VibeMeters profile={trip.driver} />
         {trip.car ? (
           <View style={styles.carRow}>
-            <CarIllustration color={trip.car.color} width={130} />
+            <CarIllustration color={trip.car.color} bodyType={trip.car.body_type} width={130} />
             <View style={{ flex: 1 }}>
               <Body style={{ fontWeight: '600' }}>
                 {trip.car.color} {trip.car.make} {trip.car.model}

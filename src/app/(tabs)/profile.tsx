@@ -64,7 +64,7 @@ export default function ProfileScreen() {
         {car ? (
           <>
             <View style={{ alignItems: 'center' }}>
-              <CarIllustration color={car.color} width={220} />
+              <CarIllustration color={car.color} bodyType={car.body_type} width={220} />
             </View>
             <Body style={{ textAlign: 'center', fontWeight: '600' }}>
               {car.color} {car.make} {car.model}

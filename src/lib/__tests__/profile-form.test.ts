@@ -73,6 +73,7 @@ describe('database rows', () => {
       plate: 'ABC1234',
       mpg: 32.5,
       seats: 3,
+      body_type: 'sedan',
     });
   });
 

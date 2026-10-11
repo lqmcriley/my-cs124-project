@@ -13,6 +13,7 @@ type AuthState = {
   profile: Profile | null; // null until the user finishes profile setup
   car: Car | null; // null if the user hasn't added a car
   payment: PaymentMethods | null; // your private Venmo / Cash App / PayPal handles
+  phone: string | null; // your private phone number, shared only with people on your trips
   loading: boolean; // true until we know who's signed in and have loaded their profile
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -20,19 +21,21 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-type UserData = { profile: Profile | null; car: Car | null; payment: PaymentMethods | null };
+type UserData = { profile: Profile | null; car: Car | null; payment: PaymentMethods | null; phone: string | null };
 
 // Load a user's profile, car and payment handles from the database. Any can be null.
 async function fetchUserData(userId: string): Promise<UserData> {
-  const [profileResult, carResult, paymentResult] = await Promise.all([
+  const [profileResult, carResult, paymentResult, contactResult] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
     supabase.from('cars').select('*').eq('owner_id', userId).maybeSingle(),
     supabase.from('payment_methods').select('venmo_username, cashapp_cashtag, paypal_username').eq('user_id', userId).maybeSingle(),
+    supabase.from('contact_info').select('phone').eq('user_id', userId).maybeSingle(),
   ]);
   if (profileResult.error) console.warn('Could not load profile', profileResult.error.message);
   if (carResult.error) console.warn('Could not load car', carResult.error.message);
   if (paymentResult.error) console.warn('Could not load payment handles', paymentResult.error.message);
-  return { profile: profileResult.data, car: carResult.data, payment: paymentResult.data };
+  if (contactResult.error) console.warn('Could not load phone number', contactResult.error.message);
+  return { profile: profileResult.data, car: carResult.data, payment: paymentResult.data, phone: contactResult.data?.phone ?? null };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -41,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [car, setCar] = useState<Car | null>(null);
   const [payment, setPayment] = useState<PaymentMethods | null>(null);
+  const [phone, setPhone] = useState<string | null>(null);
   // Which user's profile we've finished loading. Lets us tell
   // "no profile yet" apart from "profile still loading".
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
@@ -54,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(result.profile);
     setCar(result.car);
     setPayment(result.payment);
+    setPhone(result.phone);
   }, [userId]);
 
   // Listen for sign-in and sign-out. This also fires once at startup with any saved session.
@@ -65,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         setCar(null);
         setPayment(null);
+        setPhone(null);
         setLoadedUserId(null);
       }
     });
@@ -80,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(result.profile);
       setCar(result.car);
       setPayment(result.payment);
+      setPhone(result.phone);
       setLoadedUserId(userId);
     });
     return () => {
@@ -94,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loading = !sessionChecked || (userId !== null && loadedUserId !== userId);
 
   return (
-    <AuthContext.Provider value={{ session, profile, car, payment, loading, refreshProfile, signOut }}>
+    <AuthContext.Provider value={{ session, profile, car, payment, phone, loading, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );

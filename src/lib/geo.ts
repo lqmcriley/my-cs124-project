@@ -43,3 +43,39 @@ export function decodePolyline(encoded: string): LatLng[] {
   }
   return points;
 }
+
+// Total length of a route line, in miles.
+export function routeLengthMiles(route: LatLng[]): number {
+  let total = 0;
+  for (let i = 0; i < route.length - 1; i++) total += distanceMiles(route[i], route[i + 1]);
+  return total;
+}
+
+// How close a route passes to a place, and how far along the route that is.
+//   distanceMiles: shortest distance from the place to the route line
+//   alongMiles:    distance along the line from its start to that closest point
+// The closest point is found with a flat-map approximation around the place
+// (fine within ~12 miles); distances along the route use real globe distances.
+export function closestPointOnRoute(route: LatLng[], place: LatLng): { distanceMiles: number; alongMiles: number } | null {
+  if (route.length < 2) return null;
+  const milesPerDegLat = 69.0;
+  const milesPerDegLng = 69.0 * Math.cos((place.latitude * Math.PI) / 180);
+  const toXY = (p: LatLng) => ({ x: (p.longitude - place.longitude) * milesPerDegLng, y: (p.latitude - place.latitude) * milesPerDegLat });
+
+  let best = { distanceMiles: Infinity, alongMiles: 0 };
+  let travelled = 0;
+  for (let i = 0; i < route.length - 1; i++) {
+    const a = toXY(route[i]);
+    const b = toXY(route[i + 1]);
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lengthSquared = dx * dx + dy * dy;
+    // How far along this segment (0 to 1) the closest point is.
+    const t = lengthSquared === 0 ? 0 : Math.max(0, Math.min(1, -(a.x * dx + a.y * dy) / lengthSquared));
+    const distance = Math.hypot(a.x + t * dx, a.y + t * dy);
+    const segmentMiles = distanceMiles(route[i], route[i + 1]);
+    if (distance < best.distanceMiles) best = { distanceMiles: distance, alongMiles: travelled + t * segmentMiles };
+    travelled += segmentMiles;
+  }
+  return best;
+}

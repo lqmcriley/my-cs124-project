@@ -114,3 +114,15 @@ export type Message = {
   body: string;
   created_at: string;
 };
+
+export type Review = {
+  id: string;
+  trip_id: string;
+  reviewer_id: string;
+  reviewee_id: string;
+  rating: number; // 1–5
+  comment: string | null;
+  created_at: string;
+};
+
+export type ReportReason = 'unsafe_driving' | 'harassment' | 'no_show' | 'payment' | 'fake_profile' | 'other';

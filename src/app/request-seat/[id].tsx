@@ -17,13 +17,16 @@ import type { Place } from '@/lib/config';
 import { firstName, formatDeparture, formatMoney } from '@/lib/format';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { computeRoute } from '@/lib/maps';
+import { StopParams, stopFromParams } from '@/lib/trip-search';
 import { fetchTrip } from '@/lib/trips-api';
 import type { TripWithDriver } from '@/lib/types';
 
 const MESSAGE_MAX_LENGTH = 300;
 
 export default function RequestSeatScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, ...stopParams } = useLocalSearchParams<{ id: string } & StopParams>();
+  // Coming from an "along the way" search? Start with your stop filled in.
+  const stop = stopFromParams(stopParams);
   const colors = useTheme();
   const [trip, setTrip] = useState<TripWithDriver | null | undefined>(undefined);
   const [loadError, setLoadError] = useState('');
@@ -56,13 +59,13 @@ export default function RequestSeatScreen() {
       </Screen>
     );
   }
-  return <RequestForm trip={trip} />;
+  return <RequestForm trip={trip} initialStop={stop} />;
 }
 
-function RequestForm({ trip }: { trip: TripWithDriver }) {
+function RequestForm({ trip, initialStop }: { trip: TripWithDriver; initialStop: Place | null }) {
   const colors = useTheme();
-  const [wholeWay, setWholeWay] = useState(true);
-  const [dropoff, setDropoff] = useState<Place | null>(null);
+  const [wholeWay, setWholeWay] = useState(initialStop === null);
+  const [dropoff, setDropoff] = useState<Place | null>(initialStop);
   const [dropoffMiles, setDropoffMiles] = useState<number | null>(null);
   const [dropoffError, setDropoffError] = useState('');
   const [message, setMessage] = useState('');

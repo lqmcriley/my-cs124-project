@@ -1,4 +1,4 @@
-import { initialFormValues, toCarRow, toProfileRow, validateProfileForm } from '../profile-form';
+import { initialFormValues, toCarRow, toContactRow, toProfileRow, validateProfileForm } from '../profile-form';
 
 const rider = { ...initialFormValues(null, null), fullName: 'Alma Mater' };
 const driver = {
@@ -90,5 +90,19 @@ describe('vibes', () => {
   it('keeps the old quiet/talk setting in sync with the chat slider', () => {
     const quiet = toProfileRow('u', { ...initialFormValues(null, null), fullName: 'A', vibes: { vibe_chat: 1, vibe_music: 4, vibe_temp: 0, vibe_windows: 3, vibe_stops: 2 } });
     expect(quiet).toMatchObject({ chat_preference: 'quiet', vibe_chat: 1, vibe_music: 4, vibe_temp: 0 });
+  });
+});
+
+describe('phone number', () => {
+  it('is optional, checked, and saved in standard form', () => {
+    const base = { ...initialFormValues(null, null), fullName: 'A' };
+    expect(validateProfileForm({ ...base, phone: '' })).toEqual({});
+    expect(validateProfileForm({ ...base, phone: 'call me' }).phone).toBeDefined();
+    expect(toContactRow('u', { ...base, phone: '(217) 555-0123' })).toEqual({ user_id: 'u', phone: '+12175550123' });
+    expect(toContactRow('u', base)).toBeNull();
+  });
+
+  it('shows a saved number nicely', () => {
+    expect(initialFormValues(null, null, null, '+12175550123').phone).toBe('(217) 555-0123');
   });
 });

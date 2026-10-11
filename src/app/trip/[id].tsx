@@ -6,13 +6,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
-import { AnimatedItem } from '@/components/motion';
+import { AnimatedItem, PressableScale } from '@/components/motion';
 import { PayButtons } from '@/components/pay-buttons';
 import { PriceBreakdown } from '@/components/price-breakdown';
 import { CarIllustration } from '@/components/car-illustration';
+import { OdometerCard } from '@/components/odometer-card';
+import { showPersonActions } from '@/components/person-actions';
+import { SafetyCard } from '@/components/safety-card';
 import { ReliabilityBadge } from '@/components/reliability-badge';
 import { VibeMeters } from '@/components/vibes';
 import { RouteMap } from '@/components/route-map';
@@ -49,6 +52,11 @@ import { errorHaptic, successHaptic, tapHaptic } from '@/lib/haptics';
 import type { PaymentMethods } from '@/lib/payments';
 import type { Reliability } from '@/lib/reliability';
 import { fetchReliability } from '@/lib/reliability-api';
+import { canReviewNow, formatRating, RatingSummary } from '@/lib/reviews';
+import { fetchMyReviewsForTrip, fetchRatingSummary } from '@/lib/reviews-api';
+import { fetchTripContacts, TripContact } from '@/lib/safety-api';
+import { formatPhone } from '@/lib/phone';
+import { alongTheWay, StopParams, stopFromParams, stopToParams } from '@/lib/trip-search';
 import { fetchTrip } from '@/lib/trips-api';
 import type { RequestWithRider, TripRequest, TripRider, TripWithDriver } from '@/lib/types';
 import { useAuth } from '@/providers/auth-provider';
@@ -60,13 +68,16 @@ type Loaded = {
   myRequest: TripRequest | null; // rider only
   handles: PaymentMethods | null; // driver's pay handles, approved riders only
   reliability: Record<string, Reliability>; // driver + people requesting
+  ratings: Record<string, RatingSummary>; // star ratings for the same people
+  contacts: TripContact[]; // phone numbers, only for people in the car
+  reviewedCount: number; // how many people you've already rated on this trip
   loadedAt: Date; // "now" for deciding if the trip has left
 };
 
 async function loadTripPage(tripId: string, userId: string): Promise<Loaded> {
   const trip = await fetchTrip(tripId);
   const loadedAt = new Date();
-  if (!trip) return { trip: null, riders: [], requests: [], myRequest: null, handles: null, reliability: {}, loadedAt };
+  if (!trip) return { trip: null, riders: [], requests: [], myRequest: null, handles: null, reliability: {}, ratings: {}, contacts: [], reviewedCount: 0, loadedAt };
   const isDriver = trip.driver_id === userId;
   const [riders, requests, myRequest] = await Promise.all([
     fetchTripRiders(tripId),
@@ -74,17 +85,24 @@ async function loadTripPage(tripId: string, userId: string): Promise<Loaded> {
     isDriver ? Promise.resolve(null) : fetchMyRequest(tripId, userId),
   ]);
   const owes = myRequest !== null && (myRequest.status === 'approved' || myRequest.late_cancel);
-  const [handles, reliability] = await Promise.all([
+  const inCar = isDriver || myRequest?.status === 'approved';
+  const people = [trip.driver_id, ...requests.map((request) => request.rider_id), ...riders.map((rider) => rider.rider_id)];
+  const [handles, reliability, ratings, contacts, myReviews] = await Promise.all([
     owes ? fetchPaymentHandles(tripId) : Promise.resolve(null),
-    fetchReliability([trip.driver_id, ...requests.map((request) => request.rider_id)]),
+    fetchReliability(people),
+    fetchRatingSummary(people),
+    inCar ? fetchTripContacts(tripId) : Promise.resolve([]),
+    inCar ? fetchMyReviewsForTrip(tripId, userId) : Promise.resolve([]),
   ]);
-  return { trip, riders, requests, myRequest, handles, reliability, loadedAt };
+  return { trip, riders, requests, myRequest, handles, reliability, ratings, contacts, reviewedCount: myReviews.length, loadedAt };
 }
 
 export default function TripDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, ...stopParams } = useLocalSearchParams<{ id: string } & StopParams>();
+  // Set when you came here from a search for a stop this trip passes on the way.
+  const stop = stopFromParams(stopParams);
   const colors = useTheme();
-  const { session } = useAuth();
+  const { session, phone: myPhone } = useAuth();
   const userId = session!.user.id;
   const [data, setData] = useState<Loaded | undefined>(undefined); // undefined = loading
   const [error, setError] = useState('');
@@ -148,7 +166,7 @@ export default function TripDetailScreen() {
       </Screen>
     );
   }
-  const { trip, riders, requests, myRequest, handles, reliability, loadedAt } = data;
+  const { trip, riders, requests, myRequest, handles, reliability, ratings, contacts, reviewedCount, loadedAt } = data;
   if (!trip) {
     return (
       <Screen edges={['bottom']}>
@@ -181,6 +199,8 @@ export default function TripDetailScreen() {
   // No-shows can be reported for 7 days after the trip leaves.
   const canReport = departed && loadedAt.getTime() - departure.getTime() < 7 * 24 * 60 * 60 * 1000;
   const canCancelTrip = isMyTrip && isUpcoming(trip, loadedAt);
+  const inCar = isMyTrip || myRequest?.status === 'approved';
+  const along = stop && !isMyTrip ? alongTheWay(trip, stop) : null;
 
   return (
     <Screen edges={['bottom']}>
@@ -207,6 +227,24 @@ export default function TripDetailScreen() {
         <IconRow icon="people-outline" text={seatsLeft > 0 ? `${seatsLeft} of ${trip.seats_offered} seats left` : 'Full'} />
         <IconRow icon="briefcase-outline" text={`Luggage: ${luggage}`} />
       </View>
+
+      {/* You searched for a stop this trip passes on the way */}
+      {along && stop && !myRequestOpen && (
+        <View style={[styles.headsUp, { borderColor: colors.primary, backgroundColor: colors.card }]}>
+          <View style={styles.row}>
+            <Ionicons name="git-branch-outline" size={20} color={colors.primary} />
+            <Label>Getting off at {stop.name}?</Label>
+          </View>
+          <Body>
+            This trip passes about {Math.max(1, Math.round(along.distanceMiles))} mi from {stop.name} on the way to {trip.dest_name}. You&apos;d ride
+            about {Math.round(along.riderMiles)} mi and pay only for your part, about{' '}
+            {formatMoney(riderEstimate(trip, along.riderMiles).now)}.
+          </Body>
+          <Body muted style={{ fontSize: 13 }}>
+            The driver drops you on their route, near {stop.name}. Confirm the exact spot with them in the group chat.
+          </Body>
+        </View>
+      )}
 
       {/* Rider: your request */}
       {!isMyTrip && myRequest && (
@@ -253,6 +291,23 @@ export default function TripDetailScreen() {
           )}
         </Card>
       )}
+
+      {/* People in the car: phone numbers, safety tools */}
+      {inCar && trip.status !== 'cancelled' && <ContactCard contacts={contacts} hasOwnPhone={!!myPhone} />}
+      {inCar && trip.status !== 'cancelled' && <SafetyCard trip={trip} arrival={arrival} />}
+
+      {/* After the trip: rate everyone in the car (screen 9) */}
+      {inCar && canReviewNow(trip, loadedAt) && (
+        <Card>
+          <Label>Rate your trip</Label>
+          <Body muted style={{ fontSize: 14 }}>
+            {reviewedCount > 0 ? 'Thanks for rating! You can still rate anyone you skipped.' : 'How did it go? Your ratings help other students choose who to ride with.'}
+          </Body>
+          <Button title={reviewedCount > 0 ? 'Rate the others' : 'Rate your trip'} icon="star-outline" onPress={() => router.push(`/review/${trip.id}`)} />
+        </Card>
+      )}
+
+      {inCar && trip.status !== 'cancelled' && <OdometerCard tripId={trip.id} isDriver={isMyTrip} />}
 
       {/* Rider: pay the driver once the trip has left (late cancellers too) */}
       {!isMyTrip && myRequest && iOwe && trip.status !== 'cancelled' && (
@@ -374,6 +429,8 @@ export default function TripDetailScreen() {
             <RequestCard
               request={request}
               reliability={reliability[request.rider_id]}
+              rating={ratings[request.rider_id]}
+              onMore={() => showPersonActions({ userId, personId: request.rider_id, name: firstName(request.rider.full_name), tripId: trip.id, onBlocked: reload })}
               trip={trip}
               busy={busy}
               onApprove={() => run(`approve-${request.id}`, () => respondToRequest(request.id, true))}
@@ -429,8 +486,20 @@ export default function TripDetailScreen() {
           <View style={{ flex: 1 }}>
             <Text style={[styles.name, { color: colors.text }]}>{trip.driver.full_name}</Text>
             {details ? <Body muted>{details}</Body> : null}
-            <ReliabilityBadge stats={reliability[trip.driver_id]} />
+            <View style={styles.badges}>
+              {formatRating(ratings[trip.driver_id]) && <Badge label={formatRating(ratings[trip.driver_id])!} tone="waiting" />}
+              <ReliabilityBadge stats={reliability[trip.driver_id]} />
+            </View>
           </View>
+          {!isMyTrip && (
+            <PressableScale
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={`Report or block ${driverName}`}
+              onPress={() => showPersonActions({ userId, personId: trip.driver_id, name: driverName, tripId: trip.id, onBlocked: reload })}>
+              <Ionicons name="ellipsis-horizontal-circle-outline" size={28} color={colors.textSecondary} />
+            </PressableScale>
+          )}
         </View>
         {trip.driver.bio ? <Body>{trip.driver.bio}</Body> : null}
         <Label>Vibe check</Label>
@@ -455,10 +524,17 @@ export default function TripDetailScreen() {
         ) : (
           <View style={styles.riders}>
             {riders.map((rider) => (
-              <View key={rider.rider_id} style={styles.rider}>
+              <PressableScale
+                key={rider.rider_id}
+                disabled={rider.rider_id === userId}
+                accessibilityRole="button"
+                accessibilityLabel={`${rider.first_name}: report or block`}
+                onPress={() => showPersonActions({ userId, personId: rider.rider_id, name: rider.first_name, tripId: trip.id, onBlocked: reload })}
+                style={styles.rider}>
                 <Avatar uri={rider.avatar_url} name={rider.first_name} size={48} />
                 <Body style={{ fontSize: 13 }}>{rider.first_name}</Body>
-              </View>
+                {formatRating(ratings[rider.rider_id]) && <Body muted style={{ fontSize: 12 }}>{formatRating(ratings[rider.rider_id])}</Body>}
+              </PressableScale>
             ))}
           </View>
         )}
@@ -503,7 +579,16 @@ export default function TripDetailScreen() {
             {blocker}
           </Body>
         ) : (
-          <Button title={`Request a seat with ${firstName(trip.driver.full_name)}`} onPress={() => router.push(`/request-seat/${trip.id}`)} />
+          <Button
+            title={along && stop ? `Request a seat to ${stop.name}` : `Request a seat with ${firstName(trip.driver.full_name)}`}
+            onPress={() =>
+              router.push(
+                along && stop
+                  ? { pathname: '/request-seat/[id]', params: { id: trip.id, ...stopToParams(stop) } }
+                  : `/request-seat/${trip.id}`,
+              )
+            }
+          />
         )
       ) : null}
     </Screen>
@@ -518,6 +603,8 @@ function statusTone(status: TripRequest['status']) {
 function RequestCard({
   request,
   reliability,
+  rating,
+  onMore,
   trip,
   busy,
   onApprove,
@@ -525,6 +612,8 @@ function RequestCard({
 }: {
   request: RequestWithRider;
   reliability: Reliability | undefined;
+  rating: RatingSummary | undefined;
+  onMore: () => void;
   trip: TripWithDriver;
   busy: string | null;
   onApprove: () => void;
@@ -541,8 +630,14 @@ function RequestCard({
         <View style={{ flex: 1 }}>
           <Text style={[styles.name, { color: colors.text }]}>{request.rider.full_name}</Text>
           {details ? <Body muted>{details}</Body> : null}
-          <ReliabilityBadge stats={reliability} />
+          <View style={styles.badges}>
+            {formatRating(rating) && <Badge label={formatRating(rating)!} tone="waiting" />}
+            <ReliabilityBadge stats={reliability} />
+          </View>
         </View>
+        <PressableScale hitSlop={10} accessibilityRole="button" accessibilityLabel="Report or block" onPress={onMore}>
+          <Ionicons name="ellipsis-horizontal-circle-outline" size={28} color={colors.textSecondary} />
+        </PressableScale>
       </View>
       <VibeMeters profile={request.rider} />
       <IconRow
@@ -609,6 +704,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
   },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  circleButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+    marginTop: 2,
+  },
   amountRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -624,3 +737,45 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
 });
+
+// Phone numbers of everyone else in the car, with Text and Call buttons.
+function ContactCard({ contacts, hasOwnPhone }: { contacts: TripContact[]; hasOwnPhone: boolean }) {
+  const colors = useTheme();
+  return (
+    <Card>
+      <Label>Contact</Label>
+      {contacts.length === 0 ? (
+        <Body muted style={{ fontSize: 14 }}>
+          Nobody else in the car has added a phone number yet. Use the group chat to coordinate.
+        </Body>
+      ) : (
+        contacts.map((contact) => (
+          <View key={contact.user_id} style={styles.contactRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '600' }}>
+                {contact.first_name}
+                {contact.role === 'driver' ? ' (driver)' : ''}
+              </Text>
+              <Body muted style={{ fontSize: 14 }}>{formatPhone(contact.phone)}</Body>
+            </View>
+            <PressableScale
+              onPress={() => Linking.openURL(`sms:${contact.phone}`)}
+              accessibilityRole="button"
+              accessibilityLabel={`Text ${contact.first_name}`}
+              style={[styles.circleButton, { backgroundColor: colors.track }]}>
+              <Ionicons name="chatbubble-outline" size={20} color={colors.text} />
+            </PressableScale>
+            <PressableScale
+              onPress={() => Linking.openURL(`tel:${contact.phone}`)}
+              accessibilityRole="button"
+              accessibilityLabel={`Call ${contact.first_name}`}
+              style={[styles.circleButton, { backgroundColor: colors.primary }]}>
+              <Ionicons name="call-outline" size={20} color={colors.onPrimary} />
+            </PressableScale>
+          </View>
+        ))
+      )}
+      {!hasOwnPhone && <Body muted style={{ fontSize: 13 }}>Add your number in Edit profile so the others can reach you too.</Body>}
+    </Card>
+  );
+}

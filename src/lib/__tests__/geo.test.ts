@@ -1,4 +1,4 @@
-import { decodePolyline, distanceMiles } from '../geo';
+import { closestPointOnRoute, decodePolyline, distanceMiles } from '../geo';
 
 describe('distanceMiles', () => {
   it('measures campus to the Chicago Loop (~127 miles straight-line)', () => {
@@ -23,5 +23,32 @@ describe('decodePolyline', () => {
 
   it('returns nothing for an empty string', () => {
     expect(decodePolyline('')).toEqual([]);
+  });
+});
+
+
+describe('closestPointOnRoute', () => {
+  // A straight east-west route along 40°N, from 88°W to 86°W (about 106 miles).
+  const route = [
+    { latitude: 40, longitude: -88 },
+    { latitude: 40, longitude: -87 },
+    { latitude: 40, longitude: -86 },
+  ];
+
+  it('finds a place just off the middle of the route', () => {
+    // About 7 miles north of the halfway point.
+    const result = closestPointOnRoute(route, { latitude: 40.1, longitude: -87 })!;
+    expect(result.distanceMiles).toBeCloseTo(6.9, 0);
+    expect(result.alongMiles).toBeGreaterThan(50);
+    expect(result.alongMiles).toBeLessThan(55);
+  });
+
+  it('measures past the end of the route to the end point', () => {
+    const result = closestPointOnRoute(route, { latitude: 40, longitude: -85 })!;
+    expect(result.distanceMiles).toBeGreaterThan(50);
+  });
+
+  it('needs at least two points', () => {
+    expect(closestPointOnRoute([route[0]], route[0])).toBeNull();
   });
 });

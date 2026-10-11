@@ -8,15 +8,22 @@ import { Avatar } from '@/components/avatar';
 import { CarIllustration } from '@/components/car-illustration';
 import { ReliabilityBadge } from '@/components/reliability-badge';
 import { VibeMeters } from '@/components/vibes';
-import { Body, Button, Card, Heading, IconRow, Label, Screen } from '@/components/ui';
+import { Badge, Body, Button, Card, Heading, IconRow, Label, Screen, Text } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import type { Reliability } from '@/lib/reliability';
 import { fetchReliability } from '@/lib/reliability-api';
+import { formatRating, RatingSummary } from '@/lib/reviews';
+import { fetchRatingSummary, fetchRecentReviews, ReviewWithReviewer } from '@/lib/reviews-api';
+import { firstName } from '@/lib/format';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/providers/auth-provider';
 
 export default function ProfileScreen() {
+  const colors = useTheme();
   const { session, profile, car, payment, signOut } = useAuth();
   const [reliability, setReliability] = useState<Reliability | undefined>(undefined);
+  const [rating, setRating] = useState<RatingSummary | undefined>(undefined);
+  const [reviews, setReviews] = useState<ReviewWithReviewer[]>([]);
   const userId = session?.user.id;
 
   // Your own "Shows up X of Y trips", refreshed whenever you open this tab.
@@ -24,6 +31,8 @@ export default function ProfileScreen() {
     useCallback(() => {
       if (!userId) return;
       fetchReliability([userId]).then((result) => setReliability(result[userId]));
+      fetchRatingSummary([userId]).then((result) => setRating(result[userId]));
+      fetchRecentReviews(userId, 3).then(setReviews);
     }, [userId]),
   );
 
@@ -38,7 +47,10 @@ export default function ProfileScreen() {
         <Heading>{profile.full_name}</Heading>
         {details ? <Body muted>{details}</Body> : null}
         <Body muted>{session?.user.email}</Body>
-        <ReliabilityBadge stats={reliability} />
+        <View style={{ flexDirection: 'row', gap: Spacing.xs }}>
+          {formatRating(rating) && <Badge label={formatRating(rating)!} tone="waiting" />}
+          <ReliabilityBadge stats={reliability} />
+        </View>
       </View>
 
       <Card>
@@ -94,7 +106,25 @@ export default function ProfileScreen() {
         </Body>
       </Card>
 
+      <Card>
+        <Label>What people say</Label>
+        {reviews.length === 0 ? (
+          <Body muted>No reviews yet. After a trip, people in the car can rate each other.</Body>
+        ) : (
+          reviews.map((review) => (
+            <View key={review.id} style={{ gap: 2 }}>
+              <Body style={{ fontWeight: '600' }}>
+                {'★'.repeat(review.rating)}
+                <Text style={{ color: colors.textSecondary, fontWeight: '400' }}> · {firstName(review.reviewer.full_name)}</Text>
+              </Body>
+              {review.comment ? <Body muted>&ldquo;{review.comment}&rdquo;</Body> : null}
+            </View>
+          ))
+        )}
+      </Card>
+
       <Button title="Edit profile" icon="create-outline" variant="secondary" onPress={() => router.push('/edit-profile')} />
+      <Button title="Blocked people" icon="ban-outline" variant="secondary" onPress={() => router.push('/blocked')} />
       <Button
         title="Sign out"
         icon="log-out-outline"

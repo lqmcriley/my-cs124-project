@@ -19,8 +19,8 @@ import { useAuth } from '@/providers/auth-provider';
 
 export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onSaved?: () => void }) {
   const colors = useTheme();
-  const { session, profile, car, payment, refreshProfile } = useAuth();
-  const [values, setValues] = useState<ProfileFormValues>(() => initialFormValues(profile, car, payment));
+  const { session, profile, car, payment, phone, refreshProfile } = useAuth();
+  const [values, setValues] = useState<ProfileFormValues>(() => initialFormValues(profile, car, payment, phone));
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
   const [errors, setErrors] = useState<ProfileFormErrors>({});
   const [saveError, setSaveError] = useState('');
@@ -218,6 +218,22 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
             </ScrollView>
           </View>
         )}
+      </Card>
+
+      {/* Phone number */}
+      <Card>
+        <Label>Phone number (optional)</Label>
+        <Body muted>Private. Only shared with your driver or riders once someone is approved for a trip, so you can text or call.</Body>
+        <TextField
+          label="Phone"
+          placeholder="(217) 555-0123"
+          value={values.phone}
+          onChangeText={(t) => set('phone', t)}
+          keyboardType="phone-pad"
+          textContentType="telephoneNumber"
+          autoComplete="tel"
+          error={errors.phone}
+        />
       </Card>
 
       {/* Payment handles */}

@@ -15,9 +15,12 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Place, QUICK_PICKS, QuickPick } from '@/lib/config';
 import { firstName } from '@/lib/format';
-import { filterTrips } from '@/lib/trip-search';
+import { searchTrips } from '@/lib/trip-search';
 import { Reliability } from '@/lib/reliability';
 import { fetchReliability } from '@/lib/reliability-api';
+import type { RatingSummary } from '@/lib/reviews';
+import { fetchRatingSummary } from '@/lib/reviews-api';
+import { fetchBlockedIds } from '@/lib/safety-api';
 import { fetchUpcomingTrips } from '@/lib/trips-api';
 import type { TripWithDriver } from '@/lib/types';
 import { useAuth } from '@/providers/auth-provider';
@@ -31,16 +34,22 @@ export default function HomeScreen() {
   const [view, setView] = useState<'list' | 'map'>('list');
   const [trips, setTrips] = useState<TripWithDriver[] | null>(null); // null = still loading
   const [reliability, setReliability] = useState<Record<string, Reliability>>({});
+  const [ratings, setRatings] = useState<Record<string, RatingSummary>>({});
   const [loadError, setLoadError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(() => {
-    return fetchUpcomingTrips()
-      .then(async (result) => {
-        setTrips(result);
+    return Promise.all([fetchUpcomingTrips(), fetchBlockedIds()])
+      .then(async ([result, blocked]) => {
+        // Hide trips from people you blocked (or who blocked you).
+        const visible = result.filter((trip) => !blocked.has(trip.driver_id));
+        setTrips(visible);
         setLoadError('');
-        // Every driver's "Shows up X of Y trips", in one request.
-        setReliability(await fetchReliability(result.map((trip) => trip.driver_id)));
+        // Every driver's reliability and star rating, one request each.
+        const drivers = visible.map((trip) => trip.driver_id);
+        const [reliabilityResult, ratingResult] = await Promise.all([fetchReliability(drivers), fetchRatingSummary(drivers)]);
+        setReliability(reliabilityResult);
+        setRatings(ratingResult);
       })
       .catch((err: Error) => setLoadError(err.message));
   }, []);
@@ -58,7 +67,9 @@ export default function HomeScreen() {
     setRefreshing(false);
   }
 
-  const results = trips ? filterTrips(trips, { from, to, date }) : [];
+  // Trips ending at your destination, then trips that pass near it on the way.
+  const results = trips ? searchTrips(trips, { from, to, date }) : [];
+  const passingBy = results.filter((match) => match.along).length;
   const hasFilters = from !== null || to !== null || date !== null;
 
   return (
@@ -101,15 +112,16 @@ export default function HomeScreen() {
           </Body>
         </Card>
       ) : view === 'map' ? (
-        <TripsMap trips={results} />
+        <TripsMap trips={results.map((match) => match.trip)} />
       ) : (
         <View style={styles.list}>
           <Body muted>
             {results.length} {results.length === 1 ? 'ride' : 'rides'} found
+            {passingBy > 0 && to ? `, including ${passingBy} passing near ${to.name} on the way` : ''}
           </Body>
-          {results.map((trip, index) => (
+          {results.map(({ trip, along }, index) => (
             <AnimatedItem key={trip.id} index={index}>
-              <TripCard trip={trip} reliability={reliability[trip.driver_id]} />
+              <TripCard trip={trip} reliability={reliability[trip.driver_id]} rating={ratings[trip.driver_id]} along={along} stop={to} />
             </AnimatedItem>
           ))}
         </View>

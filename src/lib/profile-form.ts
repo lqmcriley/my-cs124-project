@@ -2,6 +2,7 @@
 
 import { BIO_MAX_LENGTH, CarBodyType, MAX_MPG, MAX_PASSENGER_SEATS, MIN_MPG } from './config';
 import { cleanHandle, handleError, PaymentMethods } from './payments';
+import { formatPhone, normalizePhone } from './phone';
 import type { Car, ClassYear, Profile } from './types';
 import { chatPreferenceFromVibe, Vibes, vibesFrom } from './vibes';
 
@@ -24,6 +25,7 @@ export type ProfileFormValues = {
   venmo: string;
   cashapp: string;
   paypal: string;
+  phone: string; // private; shared only with people on your trips
 };
 
 export type ProfileFormErrors = Partial<Record<keyof ProfileFormValues, string>>;
@@ -32,6 +34,7 @@ export function initialFormValues(
   profile: Profile | null,
   car: Car | null,
   payment: PaymentMethods | null = null,
+  phone: string | null = null,
 ): ProfileFormValues {
   return {
     fullName: profile?.full_name ?? '',
@@ -50,6 +53,7 @@ export function initialFormValues(
     venmo: payment?.venmo_username ?? '',
     cashapp: payment?.cashapp_cashtag ?? '',
     paypal: payment?.paypal_username ?? '',
+    phone: phone ? formatPhone(phone) : '',
   };
 }
 
@@ -92,6 +96,7 @@ export function validateProfileForm(values: ProfileFormValues): ProfileFormError
   if (venmoError) errors.venmo = venmoError;
   if (cashappError) errors.cashapp = cashappError;
   if (paypalError) errors.paypal = paypalError;
+  if (values.phone.trim() && !normalizePhone(values.phone)) errors.phone = 'Enter a 10-digit phone number, e.g. (217) 555-0123.';
 
   return errors;
 }
@@ -131,4 +136,10 @@ export function toPaymentRow(userId: string, values: ProfileFormValues) {
     paypal_username: cleanHandle(values.paypal) || null,
   };
   return row.venmo_username || row.cashapp_cashtag || row.paypal_username ? row : null;
+}
+
+// Phone number row, or null if the field is blank.
+export function toContactRow(userId: string, values: ProfileFormValues) {
+  const phone = normalizePhone(values.phone);
+  return phone ? { user_id: userId, phone } : null;
 }

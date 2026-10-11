@@ -106,3 +106,9 @@ export const CAR_BODY_TYPES = [
 ] as const;
 
 export type CarBodyType = (typeof CAR_BODY_TYPES)[number]['value'];
+
+// "Along the way": a trip shows up for your destination if its route passes
+// within this many miles of it, even if the trip ends somewhere farther.
+export const ALONG_ROUTE_RADIUS_MILES = 12;
+// Ignore matches this close to the start (you'd just be getting off on campus).
+export const ALONG_ROUTE_MIN_MILES = 15;

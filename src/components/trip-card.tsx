@@ -11,12 +11,23 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { firstName, formatDeparture, formatMoney, formatTime } from '@/lib/format';
 import { terminalArrival } from '@/lib/airport';
-import { payingRiders } from '@/lib/booking';
+import { payingRiders, riderEstimate } from '@/lib/booking';
+import type { Place } from '@/lib/config';
+import { AlongMatch, stopToParams } from '@/lib/trip-search';
 import { tripPriceSummary } from '@/lib/pricing';
 import { Reliability, reliabilitySummary } from '@/lib/reliability';
+import { formatRating, RatingSummary } from '@/lib/reviews';
 import type { TripWithDriver } from '@/lib/types';
 
-export function TripCard({ trip, reliability }: { trip: TripWithDriver; reliability?: Reliability }) {
+type Props = {
+  trip: TripWithDriver;
+  reliability?: Reliability;
+  rating?: RatingSummary;
+  along?: AlongMatch | null; // set when this trip passes near your destination
+  stop?: Place | null; // your searched destination
+};
+
+export function TripCard({ trip, reliability, rating, along, stop }: Props) {
   const colors = useTheme();
   const ridersBooked = payingRiders(trip);
   const { ifYouJoin, ifFull } = tripPriceSummary({
@@ -27,6 +38,8 @@ export function TripCard({ trip, reliability }: { trip: TripWithDriver; reliabil
     ridersBooked,
   });
   const seatsLeft = trip.seats_offered - trip.seats_booked;
+  // Riding only part of the way? Show the price for your miles.
+  const partPrice = along ? riderEstimate(trip, along.riderMiles).now : null;
   const trust = reliabilitySummary(reliability);
   const trustColor = { good: colors.success, waiting: colors.primary, bad: colors.danger, neutral: colors.textSecondary }[trust.tone];
   const arrival =
@@ -38,7 +51,13 @@ export function TripCard({ trip, reliability }: { trip: TripWithDriver; reliabil
   return (
     <PressableScale
       scaleTo={0.98}
-      onPress={() => router.push(`/trip/${trip.id}`)}
+      onPress={() =>
+        router.push(
+          along && stop
+            ? { pathname: '/trip/[id]', params: { id: trip.id, ...stopToParams(stop) } }
+            : `/trip/${trip.id}`,
+        )
+      }
       accessibilityRole="button"
       accessibilityLabel={`${driverName}'s trip to ${trip.dest_name}, ${formatDeparture(new Date(trip.departure_at))}, ${formatMoney(ifYouJoin.perSeat)} per seat if you join now`}
       style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -49,19 +68,29 @@ export function TripCard({ trip, reliability }: { trip: TripWithDriver; reliabil
             {trip.origin_name} → {trip.dest_name}
           </Text>
           <Text style={[styles.meta, { color: colors.textSecondary }]}>
-            {driverName} · <Text style={{ color: trustColor, fontWeight: '600' }}>{trust.label}</Text>
+            {driverName}
+            {formatRating(rating) ? ` · ${formatRating(rating)}` : ''} · <Text style={{ color: trustColor, fontWeight: '600' }}>{trust.label}</Text>
           </Text>
         </View>
         <View style={styles.priceBox}>
-          <FadeSwap value={ifYouJoin.perSeat}>
-            <Text style={[styles.price, { color: colors.text }]}>{formatMoney(ifYouJoin.perSeat)}</Text>
+          <FadeSwap value={partPrice ?? ifYouJoin.perSeat}>
+            <Text style={[styles.price, { color: colors.text }]}>{formatMoney(partPrice ?? ifYouJoin.perSeat)}</Text>
           </FadeSwap>
-          <Text style={[styles.meta, { color: colors.textSecondary }]}>per seat</Text>
-          {ifFull.perSeat < ifYouJoin.perSeat && (
+          <Text style={[styles.meta, { color: colors.textSecondary }]}>{partPrice !== null ? 'for your part' : 'per seat'}</Text>
+          {partPrice === null && ifFull.perSeat < ifYouJoin.perSeat && (
             <Text style={[styles.meta, { color: colors.success, fontWeight: '600' }]}>as low as {formatMoney(ifFull.perSeat)}</Text>
           )}
         </View>
       </View>
+
+      {along && stop && (
+        <View style={[styles.alongBanner, { backgroundColor: colors.track }]}>
+          <Ionicons name="git-branch-outline" size={16} color={colors.primary} />
+          <Text style={[styles.meta, { color: colors.text, flex: 1 }]}>
+            Passes {Math.max(1, Math.round(along.distanceMiles))} mi from {stop.name} · you&apos;d ride about {Math.round(along.riderMiles)} mi
+          </Text>
+        </View>
+      )}
 
       <View style={styles.details}>
         <Detail icon="time-outline" text={formatDeparture(new Date(trip.departure_at))} />
@@ -114,6 +143,14 @@ const styles = StyleSheet.create({
   },
   details: {
     gap: Spacing.xs,
+  },
+  alongBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
   },
   detail: {
     flexDirection: 'row',

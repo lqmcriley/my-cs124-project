@@ -85,6 +85,9 @@ export type Trip = {
   open_seats?: string[] | null;
   // Copied from the car when posted. Electric trips store mi/kWh in `mpg` and $/kWh in `gas_price`.
   fuel?: Fuel;
+  // Set when the driver moved a booked trip by more than the flexible window.
+  previous_departure_at?: string | null;
+  departure_moved_at?: string | null;
 };
 
 // A trip plus the driver's public profile and car, as loaded for cards and the detail screen.

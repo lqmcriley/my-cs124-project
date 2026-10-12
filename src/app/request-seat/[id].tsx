@@ -7,6 +7,7 @@ import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 import { CarIllustration } from '@/components/car-illustration';
 import { PlaceSearchField } from '@/components/place-search-field';
+import { ReturnTripNote } from '@/components/return-trip-note';
 import { SeatMap } from '@/components/seat-map';
 import { EmptyState } from '@/components/states';
 import { Body, Button, Card, Checkbox, ErrorText, Heading, IconRow, Label, Screen, SegmentedControl, Text, TextField } from '@/components/ui';
@@ -23,7 +24,7 @@ import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { computeRoute } from '@/lib/maps';
 import { longTripLabel, ROOM_RULE } from '@/lib/long-trip';
 import { freeSeats, layoutSeats, SeatHold, SeatId, seatLabel } from '@/lib/seats';
-import { StopParams, stopFromParams } from '@/lib/trip-search';
+import { StopParams, stopFromParams, tripDirection } from '@/lib/trip-search';
 import { fetchTrip } from '@/lib/trips-api';
 import type { TripWithDriver } from '@/lib/types';
 
@@ -222,6 +223,8 @@ function RequestForm({
           )}
         </View>
       )}
+
+      {tripDirection(trip) === 'returning' && <ReturnTripNote />}
 
       <Card>
         <Label>Before you request</Label>

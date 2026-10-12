@@ -1,4 +1,4 @@
-import { fairSplit, isWithin24Hours, payingRiders, paymentNote, requestBlocker, riderEstimate, splitMyTrips } from '../booking';
+import { fairSplit, isWithin24Hours, movedAfterApproval, payingRiders, paymentNote, requestBlocker, riderEstimate, splitMyTrips } from '../booking';
 import type { RequestWithTrip, TripRequest, TripWithDriver } from '../types';
 
 const NOW = new Date('2026-10-10T12:00:00');
@@ -175,5 +175,20 @@ describe('isWithin24Hours', () => {
   it('knows when cancelling becomes late', () => {
     expect(isWithin24Hours(trip('t', '2026-10-11T13:00:00'), NOW)).toBe(false); // 25 hours away
     expect(isWithin24Hours(trip('t', '2026-10-11T11:00:00'), NOW)).toBe(true); // 23 hours away
+  });
+});
+
+describe('movedAfterApproval', () => {
+  const base = trip('t', '2026-10-11T09:00:00');
+  const request = { status: 'approved', decided_at: '2026-10-09T10:00:00Z', created_at: '2026-10-09T09:00:00Z' } as TripRequest;
+
+  it('lets riders drop out free after the driver moves the trip a lot', () => {
+    expect(movedAfterApproval({ ...base, departure_moved_at: '2026-10-10T08:00:00Z' }, request)).toBe(true);
+  });
+
+  it('does not count moves before you were approved, or trips that never moved', () => {
+    expect(movedAfterApproval({ ...base, departure_moved_at: '2026-10-08T08:00:00Z' }, request)).toBe(false);
+    expect(movedAfterApproval(base, request)).toBe(false);
+    expect(movedAfterApproval({ ...base, departure_moved_at: '2026-10-10T08:00:00Z' }, { ...request, status: 'pending' })).toBe(false);
   });
 });

@@ -19,6 +19,13 @@ export function isWithin24Hours(trip: Trip, now: Date = new Date()): boolean {
   return new Date(trip.departure_at).getTime() - now.getTime() < DAY_MS;
 }
 
+// Did the driver move the trip a lot after this rider was approved? Then the
+// rider can drop out for free (the database checks the same thing).
+export function movedAfterApproval(trip: Trip, request: TripRequest | null): boolean {
+  if (!request || request.status !== 'approved' || !trip.departure_moved_at) return false;
+  return new Date(trip.departure_moved_at).getTime() > new Date(request.decided_at ?? request.created_at).getTime();
+}
+
 // What this rider would pay: now and if the car fills up.
 // `alreadyBooked` = this rider is approved, so they're already counted in seats_booked.
 export function riderEstimate(trip: Trip, riderMiles: number | null, alreadyBooked = false) {

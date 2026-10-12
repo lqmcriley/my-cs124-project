@@ -10,7 +10,7 @@ import { SeatMap } from '@/components/seat-map';
 import { CarIllustration } from '@/components/car-illustration';
 import { PressableScale } from '@/components/motion';
 import { VibeSliders } from '@/components/vibes';
-import { Body, Button, Card, Chip, ErrorText, Label, Text, TextField } from '@/components/ui';
+import { Body, Button, Card, Chip, ChipRow, ErrorText, Label, Text, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { BIO_MAX_LENGTH, CAR_BODY_TYPES, CLASS_YEARS } from '@/lib/config';
@@ -96,7 +96,7 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
       />
 
       <Label>Year (optional)</Label>
-      <View style={styles.chipRow}>
+      <ChipRow>
         {CLASS_YEARS.map((year) => (
           <Chip
             key={year}
@@ -105,7 +105,7 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
             onPress={() => set('year', values.year === year ? null : year)}
           />
         ))}
-      </View>
+      </ChipRow>
 
       <TextField
         label="Major (optional)"
@@ -182,11 +182,11 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
               </View>
             </View>
             <Label>Fuel</Label>
-            <View style={styles.chips}>
+            <ChipRow>
               {FUELS.map((option) => (
                 <Chip key={option.value} label={option.label} selected={values.fuel === option.value} onPress={() => set('fuel', option.value)} />
               ))}
-            </View>
+            </ChipRow>
             <TextField
               label={energy(values.fuel).efficiencyName}
               placeholder={isElectric(values.fuel) ? '3.5' : '32'}
@@ -203,11 +203,11 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
             </Body>
 
             <Label>Seats (counting you)</Label>
-            <View style={styles.chips}>
+            <ChipRow>
               {SEAT_LAYOUTS.map((option) => (
                 <Chip key={option.value} label={option.label} selected={values.seatLayout === option.value} onPress={() => set('seatLayout', option.value)} />
               ))}
-            </View>
+            </ChipRow>
             <Body muted>{SEAT_LAYOUTS.find((option) => option.value === values.seatLayout)?.hint}</Body>
             <SeatMap layout={values.seatLayout} openSeats={layoutSeats(values.seatLayout).map((seat) => seat.id)} mode="view" />
 
@@ -311,11 +311,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-  },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -327,11 +322,6 @@ const styles = StyleSheet.create({
   },
   column: {
     flex: 1,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
   },
   bodyTypes: {
     gap: Spacing.sm,

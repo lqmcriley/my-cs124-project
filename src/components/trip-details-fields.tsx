@@ -7,7 +7,7 @@ import { StyleSheet, View } from 'react-native';
 import { DateTimeField } from '@/components/date-time-field';
 import { FoldSection } from '@/components/fold-section';
 import { SeatMap } from '@/components/seat-map';
-import { Body, Button, Chip, ErrorText, IconRow, Label, SegmentedControl, TextField } from '@/components/ui';
+import { Body, Button, Chip, ChipRow, ErrorText, IconRow, Label, SegmentedControl, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { suggestedLeaveTime, terminalArrival } from '@/lib/airport';
 import { FLEX_WINDOWS, LUGGAGE_OPTIONS, SHUTTLE_MINUTE_OPTIONS, TRIP_NOTES_MAX_LENGTH } from '@/lib/config';
@@ -259,11 +259,11 @@ export function TripDetailsFields({ values, errors, set, maxSeats, minSeats = 1,
         )}
         <ErrorText>{errors.seats}</ErrorText>
         <Label>Luggage space per rider</Label>
-        <View style={styles.chips}>
+        <ChipRow>
           {LUGGAGE_OPTIONS.map((option) => (
             <Chip key={option.value} label={option.label} selected={values.luggage === option.value} onPress={() => set('luggage', option.value)} />
           ))}
-        </View>
+        </ChipRow>
       </FoldSection>
 
       <FoldSection
@@ -289,11 +289,6 @@ export function TripDetailsFields({ values, errors, set, maxSeats, minSeats = 1,
 
 const styles = StyleSheet.create({
   group: {
-    gap: Spacing.sm,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.sm,
   },
   suggestion: {

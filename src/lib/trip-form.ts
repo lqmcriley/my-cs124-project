@@ -2,7 +2,8 @@
 
 import type { Parking } from './airport';
 import { isLongTrip, LongTripPlan } from './long-trip';
-import { DEFAULT_GAS_PRICE, MAX_GAS_PRICE, MIN_GAS_PRICE, Place, TRIP_NOTES_MAX_LENGTH } from './config';
+import { Place, TRIP_NOTES_MAX_LENGTH } from './config';
+import { energy, Fuel } from './fuel';
 import type { Route } from './maps';
 import { defaultOpenSeats, layoutForSeats, SeatId, SeatLayout, sortSeats } from './seats';
 import type { Car, Luggage, Trip } from './types';
@@ -19,7 +20,8 @@ export type TripFormValues = {
   openSeats: SeatId[];
   luggage: Luggage;
   notes: string;
-  gasPrice: string; // text while typing
+  gasPrice: string; // text while typing ($ per kWh for electric cars)
+  fuel: Fuel; // from the car; electric cars use a charging price
   // Airport trips (only used when `to` is an airport)
   flightNumber: string;
   flightDepartsAt: Date | null;
@@ -48,7 +50,8 @@ export function emptyTripForm(car: Car): TripFormValues {
     openSeats,
     luggage: 'backpack',
     notes: '',
-    gasPrice: DEFAULT_GAS_PRICE.toFixed(2),
+    gasPrice: energy(car.fuel).defaultPrice.toFixed(2),
+    fuel: car.fuel ?? 'regular',
     flightNumber: '',
     flightDepartsAt: null,
     flightInternational: false,
@@ -80,6 +83,7 @@ export function tripFormFromTrip(trip: Trip): TripFormValues {
     luggage: trip.luggage,
     notes: trip.notes ?? '',
     gasPrice: trip.gas_price.toFixed(2),
+    fuel: trip.fuel ?? 'regular',
     flightNumber: trip.flight_number ?? '',
     flightDepartsAt: trip.flight_departs_at ? new Date(trip.flight_departs_at) : null,
     flightInternational: trip.flight_international,
@@ -108,9 +112,10 @@ export function validateTripForm(values: TripFormValues, maxSeats: number, now: 
     errors.seats = `Offer 1–${maxSeats} seats.`;
   }
 
+  const { priceName, unit, minPrice, maxPrice } = energy(values.fuel);
   const gasPrice = Number(values.gasPrice);
-  if (!values.gasPrice.trim() || !Number.isFinite(gasPrice) || gasPrice < MIN_GAS_PRICE || gasPrice > MAX_GAS_PRICE) {
-    errors.gasPrice = `Enter a gas price between $${MIN_GAS_PRICE} and $${MAX_GAS_PRICE}.`;
+  if (!values.gasPrice.trim() || !Number.isFinite(gasPrice) || gasPrice < minPrice || gasPrice > maxPrice) {
+    errors.gasPrice = `Enter a ${priceName.toLowerCase()} between $${minPrice.toFixed(2)} and $${maxPrice.toFixed(2)} per ${unit}.`;
   }
 
   if (values.notes.length > TRIP_NOTES_MAX_LENGTH) errors.notes = `Keep notes under ${TRIP_NOTES_MAX_LENGTH} characters.`;

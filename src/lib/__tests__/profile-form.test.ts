@@ -8,6 +8,7 @@ const driver = {
   model: 'Civic',
   color: 'Silver',
   plate: 'abc1234',
+  modelYear: '2019',
   mpg: '32.5',
   seatLayout: '4' as const,
 };
@@ -35,11 +36,20 @@ describe('validateProfileForm', () => {
 
   it('requires every car field for drivers', () => {
     const errors = validateProfileForm({ ...rider, isDriver: true });
-    expect(Object.keys(errors).sort()).toEqual(['color', 'make', 'model', 'mpg', 'plate']);
+    expect(Object.keys(errors).sort()).toEqual(['color', 'make', 'model', 'modelYear', 'mpg', 'plate']);
   });
 
   it.each(['0', '4', '151', 'abc', ''])('rejects MPG %j', (mpg) => {
     expect(validateProfileForm({ ...driver, mpg }).mpg).toBeDefined();
+  });
+
+  it.each(['', '19', '1975', '2099', 'abcd'])('rejects model year %j', (modelYear) => {
+    expect(validateProfileForm({ ...driver, modelYear }).modelYear).toBeDefined();
+  });
+
+  it('checks miles per kWh for electric cars instead of MPG', () => {
+    expect(validateProfileForm({ ...driver, fuel: 'electric', mpg: '3.8' })).toEqual({});
+    expect(validateProfileForm({ ...driver, fuel: 'electric', mpg: '32' }).mpg).toMatch(/miles per kWh/);
   });
 
 });
@@ -68,6 +78,8 @@ describe('database rows', () => {
       model: 'Civic',
       color: 'Silver',
       plate: 'ABC1234',
+      model_year: 2019,
+      fuel: 'regular',
       mpg: 32.5,
       seats: 3,
       seat_layout: '4',

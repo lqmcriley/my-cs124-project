@@ -15,6 +15,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { BIO_MAX_LENGTH, CAR_BODY_TYPES, CLASS_YEARS } from '@/lib/config';
 import { friendlyError } from '@/lib/errors';
+import { energy, FUELS, isElectric } from '@/lib/fuel';
 import { PickedPhoto, saveProfile } from '@/lib/profile-api';
 import { initialFormValues, ProfileFormErrors, ProfileFormValues, validateProfileForm } from '@/lib/profile-form';
 import { layoutSeats, SEAT_LAYOUTS } from '@/lib/seats';
@@ -149,12 +150,21 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
           <View style={styles.form}>
             <View style={styles.twoColumns}>
               <View style={styles.column}>
-                <TextField label="Make" placeholder="Honda" value={values.make} onChangeText={(t) => set('make', t)} error={errors.make} />
+                <TextField
+                  label="Year"
+                  placeholder="2019"
+                  value={values.modelYear}
+                  onChangeText={(t) => set('modelYear', t)}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  error={errors.modelYear}
+                />
               </View>
               <View style={styles.column}>
-                <TextField label="Model" placeholder="Civic" value={values.model} onChangeText={(t) => set('model', t)} error={errors.model} />
+                <TextField label="Make" placeholder="Honda" value={values.make} onChangeText={(t) => set('make', t)} error={errors.make} />
               </View>
             </View>
+            <TextField label="Model" placeholder="Civic" value={values.model} onChangeText={(t) => set('model', t)} error={errors.model} />
             <View style={styles.twoColumns}>
               <View style={styles.column}>
                 <TextField label="Color" placeholder="Silver" value={values.color} onChangeText={(t) => set('color', t)} error={errors.color} />
@@ -171,15 +181,26 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
                 />
               </View>
             </View>
+            <Label>Fuel</Label>
+            <View style={styles.chips}>
+              {FUELS.map((option) => (
+                <Chip key={option.value} label={option.label} selected={values.fuel === option.value} onPress={() => set('fuel', option.value)} />
+              ))}
+            </View>
             <TextField
-              label="MPG"
-              placeholder="32"
+              label={energy(values.fuel).efficiencyName}
+              placeholder={isElectric(values.fuel) ? '3.5' : '32'}
               value={values.mpg}
               onChangeText={(t) => set('mpg', t)}
               keyboardType="decimal-pad"
               error={errors.mpg}
             />
-            <Body muted>MPG is used to work out a fair gas split.</Body>
+            <Body muted>
+              {isElectric(values.fuel)
+                ? "Used to split the charging cost fairly. Your car's screen shows miles per kWh (usually 3–4)."
+                : 'Used to work out a fair gas split.'}
+              {values.fuel === 'premium' ? ' Riders will see that your car takes premium. You can set a higher gas price when you post.' : ''}
+            </Body>
 
             <Label>Seats (counting you)</Label>
             <View style={styles.chips}>

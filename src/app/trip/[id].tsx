@@ -52,6 +52,7 @@ import {
 } from '@/lib/booking-api';
 import { LUGGAGE_OPTIONS } from '@/lib/config';
 import { friendlyError } from '@/lib/errors';
+import { carName, fuelTag } from '@/lib/fuel';
 import { firstName, formatDeparture, formatDuration, formatFlex, formatMoney } from '@/lib/format';
 import { decodePolyline } from '@/lib/geo';
 import { estimatedArrival, longTripLabel, ROOM_RULE } from '@/lib/long-trip';
@@ -548,10 +549,9 @@ export default function TripDetailScreen() {
           <View style={styles.carRow}>
             <CarIllustration color={trip.car.color} bodyType={trip.car.body_type} width={130} />
             <View style={{ flex: 1 }}>
-              <Body style={{ fontWeight: '600' }}>
-                {trip.car.color} {trip.car.make} {trip.car.model}
-              </Body>
+              <Body style={{ fontWeight: '600' }}>{carName(trip.car)}</Body>
               <Body muted style={{ fontSize: 14 }}>Plate {trip.car.plate}</Body>
+              {fuelTag(trip.fuel) && <Badge label={fuelTag(trip.fuel)!} tone="neutral" />}
             </View>
           </View>
         ) : null}
@@ -596,6 +596,7 @@ export default function TripDetailScreen() {
       <PriceBreakdown
         miles={trip.route_miles}
         mpg={trip.mpg}
+        fuel={trip.fuel}
         gasPrice={trip.gas_price}
         seatsOffered={trip.seats_offered}
         ridersBooked={payingRiders(trip)}

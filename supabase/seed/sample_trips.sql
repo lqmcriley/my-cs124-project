@@ -7,7 +7,7 @@
 -- Dates are relative to today, so run it again any time to refresh them.
 -- To remove every sample before launch, run supabase/seed/remove_sample_trips.sql.
 --
--- Needs the migrations up to 20261016000000_practice_ride.sql first.
+-- Needs the migrations up to 20261017000000_car_year_and_fuel.sql first.
 
 -- Start fresh: remove any earlier samples (trips and cars go with their drivers).
 delete from auth.users where email like 'hitchillini.sample%@illinois.edu';
@@ -46,18 +46,18 @@ insert into public.profiles (id, full_name, year, major, bio, chat_preference, v
   ('00000000-5a3b-4e00-8000-000000000010', 'Grace Lin', 'Senior', 'Accountancy', 'Very on time. Very precise gas math.', 'quiet', 1, 1, 2, 0, 0);
 
 -- Passenger seats are filled in from the seat layout.
-insert into public.cars (id, owner_id, make, model, color, body_type, mpg, seats, seat_layout, plate) values
-  ('00000000-5a3b-4e00-8001-000000000001', '00000000-5a3b-4e00-8000-000000000001', 'Honda', 'Civic', 'Blue', 'sedan', 34, 1, '5', 'SAMPLE'),
-  ('00000000-5a3b-4e00-8001-000000000002', '00000000-5a3b-4e00-8000-000000000002', 'Toyota', 'RAV4', 'Silver', 'suv', 30, 1, '5_cramped', 'SAMPLE'),
-  ('00000000-5a3b-4e00-8001-000000000003', '00000000-5a3b-4e00-8000-000000000003', 'Toyota', 'Corolla', 'White', 'sedan', 35, 1, '5_cramped', 'SAMPLE'),
-  ('00000000-5a3b-4e00-8001-000000000004', '00000000-5a3b-4e00-8000-000000000004', 'Honda', 'Odyssey', 'Gray', 'minivan', 24, 1, '8', 'SAMPLE'),
-  ('00000000-5a3b-4e00-8001-000000000005', '00000000-5a3b-4e00-8000-000000000005', 'Mazda', '3 Hatchback', 'Red', 'hatchback', 33, 1, '5_cramped', 'SAMPLE'),
-  ('00000000-5a3b-4e00-8001-000000000006', '00000000-5a3b-4e00-8000-000000000006', 'Ford', 'F-150', 'Black', 'pickup', 20, 1, '5', 'SAMPLE'),
-  ('00000000-5a3b-4e00-8001-000000000007', '00000000-5a3b-4e00-8000-000000000007', 'Honda', 'Fit', 'Green', 'hatchback', 36, 1, '4', 'SAMPLE'),
-  ('00000000-5a3b-4e00-8001-000000000008', '00000000-5a3b-4e00-8000-000000000008', 'Subaru', 'Outback', 'Green', 'suv', 29, 1, '5', 'SAMPLE'),
-  ('00000000-5a3b-4e00-8001-000000000009', '00000000-5a3b-4e00-8000-000000000009', 'Ford', 'Mustang', 'Orange', 'coupe', 24, 1, '4', 'SAMPLE'),
-  ('00000000-5a3b-4e00-8001-000000000011', '00000000-5a3b-4e00-8000-000000000011', 'Toyota', 'Camry', 'Blue', 'sedan', 33, 1, '5_cramped', 'SAMPLE'),
-  ('00000000-5a3b-4e00-8001-000000000010', '00000000-5a3b-4e00-8000-000000000010', 'Hyundai', 'Elantra', 'Gray', 'sedan', 37, 1, '5_cramped', 'SAMPLE');
+insert into public.cars (id, owner_id, make, model, color, body_type, mpg, seats, seat_layout, model_year, fuel, plate) values
+  ('00000000-5a3b-4e00-8001-000000000001', '00000000-5a3b-4e00-8000-000000000001', 'Honda', 'Civic', 'Blue', 'sedan', 34, 1, '5', 2019, 'regular', 'SAMPLE'),
+  ('00000000-5a3b-4e00-8001-000000000002', '00000000-5a3b-4e00-8000-000000000002', 'Toyota', 'RAV4 Hybrid', 'Silver', 'suv', 40, 1, '5_cramped', 2021, 'hybrid', 'SAMPLE'),
+  ('00000000-5a3b-4e00-8001-000000000003', '00000000-5a3b-4e00-8000-000000000003', 'Toyota', 'Corolla', 'White', 'sedan', 35, 1, '5_cramped', 2020, 'regular', 'SAMPLE'),
+  ('00000000-5a3b-4e00-8001-000000000004', '00000000-5a3b-4e00-8000-000000000004', 'Honda', 'Odyssey', 'Gray', 'minivan', 24, 1, '8', 2015, 'regular', 'SAMPLE'),
+  ('00000000-5a3b-4e00-8001-000000000005', '00000000-5a3b-4e00-8000-000000000005', 'Mazda', '3 Hatchback', 'Red', 'hatchback', 33, 1, '5_cramped', 2018, 'regular', 'SAMPLE'),
+  ('00000000-5a3b-4e00-8001-000000000006', '00000000-5a3b-4e00-8000-000000000006', 'Ford', 'F-150', 'Black', 'pickup', 20, 1, '5', 2016, 'regular', 'SAMPLE'),
+  ('00000000-5a3b-4e00-8001-000000000007', '00000000-5a3b-4e00-8000-000000000007', 'Honda', 'Fit', 'Green', 'hatchback', 36, 1, '4', 2014, 'regular', 'SAMPLE'),
+  ('00000000-5a3b-4e00-8001-000000000008', '00000000-5a3b-4e00-8000-000000000008', 'Subaru', 'Outback', 'Green', 'suv', 29, 1, '5', 2021, 'regular', 'SAMPLE'),
+  ('00000000-5a3b-4e00-8001-000000000009', '00000000-5a3b-4e00-8000-000000000009', 'Ford', 'Mustang', 'Orange', 'coupe', 24, 1, '4', 2012, 'premium', 'SAMPLE'),
+  ('00000000-5a3b-4e00-8001-000000000011', '00000000-5a3b-4e00-8000-000000000011', 'Toyota', 'Camry', 'Blue', 'sedan', 33, 1, '5_cramped', 2018, 'regular', 'SAMPLE'),
+  ('00000000-5a3b-4e00-8001-000000000010', '00000000-5a3b-4e00-8000-000000000010', 'Tesla', 'Model 3', 'White', 'sedan', 4, 1, '5_cramped', 2022, 'electric', 'SAMPLE');
 
 insert into public.trips (
   id, driver_id, car_id, is_sample, is_practice,
@@ -71,7 +71,7 @@ insert into public.trips (
   ('00000000-5a3b-4e00-8002-000000000001', '00000000-5a3b-4e00-8000-000000000002', '00000000-5a3b-4e00-8001-000000000002', true, false,
    'Illini Union', '1401 W Green St, Urbana, IL', 40.10921, -88.22722, 'O''Hare International Airport', '10000 W O''Hare Ave, Chicago, IL 60666', 41.98026, -87.90899,
    150.2, 153, $poly$qyxsFjvnyO{E`N}d@Ro@z\qaALDf^yaH|Cih@jZwsGk`GcaHquB{fHeFyuHkmFe_L_`E{eDiM{{GkdDefBgG}gDqhC{fHuHcd@oVuiAmyAwf@yR}kAe@qmA}Uu{DjDgeBcs@i{CtBclBmoBae@ySudFvAopAeu@gtFiCwfA{m@wiCkMoxBeaC_aEukB_w@yeBcd@y_@evBaKokH{{B}wAqGaeJgkCyk@qdAwO}}Csy@c_Ay}IxGifCzx@g_@t}AuYtXytGhGy~P{rGcvFcr@i`EksEkaDaxBilHqVc_GqyAw{M}Amz@iy@arEkeHewA~z@oMx`BqV`c@gaCboAqrB|jG{j@lk@mtBxp@kvAriBwgA`i@mv@xgAmw@dqB{El}Am~Aj{F}n@hx@kiDfMitDtz@auAdI_oBKulAeQyeA`VsaCzA{[pW}x@zlBoCoNkoGk@nNi_@yJizDiWrQyArVgg@{PD~b@uPYcOrW{JiBxDmYwYaSXaV$poly$,
-   pg_temp.sample_at(2, '13:00'), 3, 'Illini Union', 'large', 'Meeting at the Green St entrance. Room for checked bags.', 3.29, 30,
+   pg_temp.sample_at(2, '13:00'), 3, 'Illini Union', 'large', 'Meeting at the Green St entrance. Room for checked bags.', 3.29, 40,
    true, 'UA 1428', pg_temp.sample_at(2, '18:05'), false, 'terminal', null, 0, null, null,
    '5_cramped', array['front', 'back_left', 'back_right']),
   -- 2. ISR dorms → Naperville (134.3 mi, ~2.3 h)
@@ -113,7 +113,7 @@ insert into public.trips (
   ('00000000-5a3b-4e00-8002-000000000007', '00000000-5a3b-4e00-8000-000000000010', '00000000-5a3b-4e00-8001-000000000010', true, false,
    'Illini Union', '1401 W Green St, Urbana, IL', 40.10921, -88.22722, 'Bloomington-Normal', 'Normal, IL', 40.5142, -88.99063,
    54.2, 62, $poly$qyxsFjvnyO{E`N}d@Ro@z\qaALH`|@}t@ZtClyAyVl|Ay`E|xFutCvqMoeAjnCipEnle@qeCbaEm_@`_DeeLpgPahPfzd@kcAdyAg`@jxD_tK|XiGkI}}@vAcAgP$poly$,
-   pg_temp.sample_at(5, '10:00'), 3, 'Illini Union', 'backpack', null, 3.29, 37,
+   pg_temp.sample_at(5, '10:00'), 3, 'Illini Union', 'backpack', null, 0.20, 4,
    false, null, null, false, 'terminal', null, 0, null, null,
    '5_cramped', array['front', 'back_left', 'back_right']),
   -- 8. ISR dorms → Peoria (91.4 mi, ~1.6 h)
@@ -127,7 +127,7 @@ insert into public.trips (
   ('00000000-5a3b-4e00-8002-000000000009', '00000000-5a3b-4e00-8000-000000000009', '00000000-5a3b-4e00-8001-000000000009', true, false,
    'Illini Union', '1401 W Green St, Urbana, IL', 40.10921, -88.22722, 'Evanston', 'Evanston, IL', 42.04514, -87.68769,
    147.7, 151, $poly$qyxsFjvnyO{E`N}d@Ro@z\qaALDf^yaH|Cih@jZwsGk`GcaHquB{fHeFyuHkmFe_L_`E{eDiM{{GkdDefBgG}gDqhC{fHuHcd@oVuiAmyAwf@yR}kAe@qmA}Uu{DjDgeBcs@i{CtBclBmoBae@ySudFvAopAeu@gtFiCwfA{m@{cC{Juj@}\urAweB_aEukB_w@yeBcd@y_@evBaKokH{{B}wAqGaeJgkCyk@qdAwO}}CsWag@me@uX_~IpJuaCvw@g_@t}AuYtXqnGzHaeQmtGcvFcr@i`EksEucD{xB_jHwUc_GqyA{uMUyg@}[meJowMotH}Akz@cSu]ab@kbAs@eQiYmBsyB{Wi\ylI`Hwk@f^oiKZm^~gAiUhNw_F~Guz@riAq`ArRw|@`o@ya@tt@a{@~@}k@r|@gqRjMod@UhB_N$poly$,
-   pg_temp.sample_at(6, '09:00'), 2, 'Illini Union', 'backpack', 'Visiting friends at Northwestern.', 3.29, 24,
+   pg_temp.sample_at(6, '09:00'), 2, 'Illini Union', 'backpack', 'Visiting friends at Northwestern.', 3.99, 24,
    false, null, null, false, 'terminal', null, 0, null, null,
    '4', array['front', 'back_left']),
   -- 10. Krannert Center → Woodfield Mall (155 mi, ~2.6 h)
@@ -141,14 +141,14 @@ insert into public.trips (
   ('00000000-5a3b-4e00-8002-000000000011', '00000000-5a3b-4e00-8000-000000000002', '00000000-5a3b-4e00-8001-000000000002', true, false,
    'O''Hare International Airport', '10000 W O''Hare Ave, Chicago, IL 60666', 41.98026, -87.90899, 'Illini Union', '1401 W Green St, Urbana, IL', 40.10921, -88.22722,
    148.7, 152, $poly$oof_GbdpwOY`VvY`SyDlYzJhBbOsWtPXIgb@jg@bPxAsVxV{QrJlyDyNta@rhHj@_Mr]xq@wxBl^yZtfCE`gAkWteAlPhqBf@nvAmI`rDk{@dyCcGz`@iS~\}k@d~A}xFtDe{Ady@kvBnv@{fAjeA}f@~vAqjBrpBqn@vn@wm@f`Aq`C|SclArnMcV`Ioa@zaAzaA~v@rSnuLuGb_GtyAjnH~W|}CpwBv_EjrEvsF|p@ddQptGlrGyHpZe\r]ozA`fCox@|zI{Hp{@n_A|Oz~Cjm@`eAraJtiC`xAlGzlHn|BpyBtLrb@j`@`x@ffB~_EvjBvpAhdBbk@h]pcCtJ|dAtm@|wFbDzkAht@`fFuAzf@lTblBfoBh{CkBxbBlr@n_EyCblAvUxmAp@`g@jTlgAlwAnd@rV~dH`Hps@h]jnB~gB`lBvIp|GrdDdeD`Mf`Ll`E|vHzmF`cH~DxcHfvBlgGhlGjr@ah@fdHeDEg^paAMn@{\|d@SzEaN$poly$,
-   pg_temp.sample_at(8, '20:00'), 3, 'O''Hare International Airport', 'large', 'Coming back from a trip, happy to grab anyone landing around 7.', 3.29, 30,
+   pg_temp.sample_at(8, '20:00'), 3, 'O''Hare International Airport', 'large', 'Coming back from a trip, happy to grab anyone landing around 7.', 3.29, 40,
    false, null, null, false, 'terminal', null, 0, null, null,
    '5_cramped', array['front', 'back_left', 'back_right']),
   -- 12. Illini Union → Madison (255 mi, ~4.2 h)
   ('00000000-5a3b-4e00-8002-000000000012', '00000000-5a3b-4e00-8000-000000000010', '00000000-5a3b-4e00-8001-000000000010', true, false,
    'Illini Union', '1401 W Green St, Urbana, IL', 40.10921, -88.22722, 'Madison', 'Madison, WI', 43.07305, -89.40123,
    255, 253, $poly$qyxsFjvnyO{E`N}d@Ro@z\qaALH`|@}t@ZtClyAyVl|Ay`E|xFutCvqMoeAjnCipEnle@qeCbaEm_@`_DeeLpgPahPfzd@kcAdyA}a@flI_fDpdB}hL_T}d@gj@`UiiAyPk]usIkCk_BkW_fAhZejGzJmj@`b@o{@~iB_}DnIsn@|Zk``@bQ{]lX}VlkAo^fTwnZm@gxAl~@woGhDccA|o@icZjPg_AdQesH`NovHinC}qCaOk|JzDg}Bst@ekEgIieBjU{mAzk@ksGvRcxPmKwdDkeA_~CsdFik@uVgk_@xJspClgA{x@rIqcGhAcnBoU}qKhAk~AuJkcBrSy_WxGg\_Mcm@wx@ubAsPs`@k`DmwAydB_w@ef@gt@tVcmTy@stGn`CmoBrCc{Cdv@w{EHytAkY{fBs~AgmGl@_dA}|E_dAtRoE`tDozHpCaBdq@{b@|J}vMjGed@bUc_AvuA{l@hUmtJmBk`B~iB}vFtwA}mChxC}pD|oC_pCtKqzB|_AgrArXgcElgG_d@bbDnCfuC}pAfuFqjDtcG}x@fVvUdoEjJvhJaYhj@{rAxcAgl@yIma@hn@dC|u@$poly$,
-   pg_temp.sample_at(9, '08:00'), 3, 'Illini Union', 'carry_on', 'Badgers game weekend.', 3.29, 37,
+   pg_temp.sample_at(9, '08:00'), 3, 'Illini Union', 'carry_on', 'Badgers game weekend.', 0.20, 4,
    false, null, null, false, 'terminal', null, 0, null, null,
    '5_cramped', array['front', 'back_left', 'back_right']),
   -- 13. Illini Union → Nashville (372 mi, ~6.1 h)

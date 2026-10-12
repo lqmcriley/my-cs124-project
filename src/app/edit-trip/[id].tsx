@@ -13,6 +13,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { payingRiders } from '@/lib/booking';
 import { fetchTripSeats } from '@/lib/booking-api';
 import { friendlyError } from '@/lib/errors';
+import { energy } from '@/lib/fuel';
 import { formatMoney } from '@/lib/format';
 import type { SeatHold } from '@/lib/seats';
 import { toTripUpdate, tripFormFromTrip, TripFormErrors, TripFormValues, validateTripForm } from '@/lib/trip-form';
@@ -114,9 +115,10 @@ function EditTripForm({ trip, holds }: { trip: TripWithDriver; holds: SeatHold[]
           {trip.origin_name} → {trip.dest_name}
         </Label>
         <Body muted>
-          {trip.route_miles} mi · gas at {formatMoney(trip.gas_price)}/gal. The route, pickup spot and gas price can&apos;t
-          change after posting, so riders&apos; prices stay fair. To change those, cancel and post a new trip. If you update
-          your car&apos;s MPG in your profile, this trip updates too, as long as nobody has booked yet.
+          {trip.route_miles} mi · {energy(trip.fuel).thing} at {formatMoney(trip.gas_price)}/{energy(trip.fuel).unit}. The route,
+          pickup spot and {energy(trip.fuel).priceName.toLowerCase()} can&apos;t change after posting, so riders&apos; prices stay fair.
+          To change those, cancel and post a new trip. If you update your car&apos;s {energy(trip.fuel).efficiencyUnit} in your
+          profile, this trip updates too, as long as nobody has booked yet.
         </Body>
       </Card>
 
@@ -134,6 +136,7 @@ function EditTripForm({ trip, holds }: { trip: TripWithDriver; holds: SeatHold[]
       <PriceBreakdown
         miles={trip.route_miles}
         mpg={trip.mpg}
+        fuel={trip.fuel}
         gasPrice={trip.gas_price}
         seatsOffered={values.seats}
         ridersBooked={payingRiders(trip)}

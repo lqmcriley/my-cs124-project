@@ -24,6 +24,17 @@ export const MAX_MPG = 150;
 export const MIN_GAS_PRICE = 1;
 export const MAX_GAS_PRICE = 10;
 
+// Electric cars use miles per kWh instead of MPG, and a charging price per kWh
+// instead of a gas price (also enforced in the database).
+export const MIN_MI_PER_KWH = 1;
+export const MAX_MI_PER_KWH = 10;
+export const DEFAULT_CHARGE_PRICE = 0.2;
+export const MIN_CHARGE_PRICE = 0.05;
+export const MAX_CHARGE_PRICE = 1;
+
+// Oldest car model year we accept.
+export const MIN_MODEL_YEAR = 1980;
+
 // ---------------------------------------------------------------------------
 // Places. Coordinates come from Google Places (looked up October 2026).
 // ---------------------------------------------------------------------------

@@ -11,6 +11,8 @@ select test.ok((select count(*) = 11 and bool_and(banned_until = 'infinity') fro
 select test.ok((select count(*) = 1 from public.trips where is_practice and not is_sample), 'there is one practice ride');
 select test.ok((select long_trip_plan = 'overnight' and route_minutes >= 480 from public.trips where is_sample and dest_name = 'Hartford'), 'the Hartford sample shows off an overnight long trip');
 select test.ok((select count(*) = 2 from public.trips where is_sample and is_airport), 'two samples are airport trips');
+select test.ok((select count(*) = 2 and bool_and(gas_price = 0.20) from public.trips where is_sample and fuel = 'electric'), 'the electric samples use a charging price');
+select test.ok((select bool_and(model_year is not null) from public.cars where plate = 'SAMPLE'), 'every sample car has a year');
 select test.ok((select bool_and(seat_layout is not null) from public.trips where is_sample), 'every sample trip has a seat map');
 select test.ok((select count(*) = 7 from public.trip_requests r join public.trips t on t.id = r.trip_id where t.is_sample and r.status = 'approved' and r.seat = any (t.open_seats)), 'made-up riders fill 7 offered seats');
 select test.ok((select sum(seats_booked) = 7 from public.trips where is_sample), 'booked seat counts match the made-up riders');

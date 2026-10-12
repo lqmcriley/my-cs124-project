@@ -2,6 +2,7 @@
 // Keep these in sync with supabase/migrations/.
 
 import { CarBodyType, CLASS_YEARS } from './config';
+import type { Fuel } from './fuel';
 import type { SeatLayout } from './seats';
 import type { VibeKey } from './vibes';
 
@@ -29,6 +30,8 @@ export type Car = {
   seats: number;
   body_type?: CarBodyType; // drawing shape; optional for databases before the body-style migration
   seat_layout?: SeatLayout; // optional for databases before the seat-map migration
+  model_year?: number | null; // e.g. 2019 (null for cars saved before it was asked)
+  fuel?: Fuel; // electric cars store miles per kWh in `mpg`
 };
 
 export type TripStatus = 'scheduled' | 'cancelled' | 'completed';
@@ -80,6 +83,8 @@ export type Trip = {
   // Seat map: the car's layout and which seats the driver offers. Null on trips posted before seat maps.
   seat_layout?: SeatLayout | null;
   open_seats?: string[] | null;
+  // Copied from the car when posted. Electric trips store mi/kWh in `mpg` and $/kWh in `gas_price`.
+  fuel?: Fuel;
 };
 
 // A trip plus the driver's public profile and car, as loaded for cards and the detail screen.

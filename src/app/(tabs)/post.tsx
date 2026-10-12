@@ -17,6 +17,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { PICKUP_SPOTS, Place, QUICK_PICKS } from '@/lib/config';
 import { friendlyError } from '@/lib/errors';
+import { carName, efficiencyText, energy, fuelTag, isElectric } from '@/lib/fuel';
 import { formatDuration } from '@/lib/format';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { isLongTrip } from '@/lib/long-trip';
@@ -35,15 +36,15 @@ export default function PostTripScreen() {
         <Heading>Post a trip</Heading>
         <Card>
           <Body style={{ fontWeight: '700' }}>Add your car first</Body>
-          <Body muted>We need your car&apos;s MPG and seats to work out a fair gas split.</Body>
+          <Body muted>We need your car&apos;s MPG (or miles per kWh) and seats to work out a fair split.</Body>
           <Button title="Add my car" onPress={() => router.push('/edit-profile')} />
         </Card>
       </Screen>
     );
   }
 
-  // A new car (different id) starts a fresh form.
-  return <PostTripForm key={car.id} car={car} driverId={session!.user.id} />;
+  // A new car, or a new fuel or seat layout for it, starts a fresh form.
+  return <PostTripForm key={`${car.id}-${car.fuel}-${car.seat_layout}`} car={car} driverId={session!.user.id} />;
 }
 
 function PostTripForm({ car, driverId }: { car: Car; driverId: string }) {
@@ -95,6 +96,7 @@ function PostTripForm({ car, driverId }: { car: Car; driverId: string }) {
   }, [from, to]);
 
   const gasPrice = Number(values.gasPrice);
+  const power = energy(car.fuel); // gas words, or charging words for electric cars
   const canPrice = values.route !== null && Number.isFinite(gasPrice) && gasPrice > 0;
   const whereSummary =
     from && to
@@ -136,10 +138,10 @@ function PostTripForm({ car, driverId }: { car: Car; driverId: string }) {
         <CarIllustration color={car.color} bodyType={car.body_type} width={150} />
         <View style={{ flex: 1 }}>
           <Body muted>You&apos;re driving your</Body>
-          <Body style={{ fontWeight: '600' }}>
-            {car.color} {car.make} {car.model}
+          <Body style={{ fontWeight: '600' }}>{carName(car)}</Body>
+          <Body muted style={{ fontSize: 13 }}>
+            {[efficiencyText(car.mpg, car.fuel), fuelTag(car.fuel), `up to ${car.seats} riders`].filter(Boolean).join(' · ')}
           </Body>
-          <Body muted style={{ fontSize: 13 }}>{car.mpg} MPG · up to {car.seats} riders</Body>
         </View>
       </View>
 
@@ -189,24 +191,38 @@ function PostTripForm({ car, driverId }: { car: Car; driverId: string }) {
       <TripDetailsFields values={values} errors={errors} set={set} maxSeats={car.seats} open={open} toggle={toggle} />
 
       <FoldSection
-        title="Gas price"
-        icon="speedometer-outline"
-        summary={`$${values.gasPrice || '?'} per gallon`}
+        title={power.priceName}
+        icon={isElectric(car.fuel) ? 'flash-outline' : 'speedometer-outline'}
+        summary={`$${values.gasPrice || '?'} per ${power.unit}`}
         open={!!open.gas}
         onToggle={() => toggle('gas')}
         hasError={sectionHasError('gas', errors)}>
         <TextField
-          label="Gas price ($ per gallon)"
+          label={`${power.priceName} ($ per ${power.unit})`}
           value={values.gasPrice}
           onChangeText={(text) => set('gasPrice', text)}
           keyboardType="decimal-pad"
-          hint="Pre-filled with the local average. Use what you'll actually pay."
+          hint={
+            isElectric(car.fuel)
+              ? 'About $0.15 charging at home, $0.40+ at fast chargers. Use what you expect to pay.'
+              : car.fuel === 'premium'
+                ? 'Your car takes premium, which usually costs about $0.70 more per gallon than regular. Use what you\'ll actually pay.'
+                : "Pre-filled with the local average. Use what you'll actually pay."
+          }
           error={errors.gasPrice}
         />
       </FoldSection>
 
       {canPrice && values.route ? (
-        <PriceBreakdown miles={values.route.miles} mpg={car.mpg} gasPrice={gasPrice} seatsOffered={values.seats} ridersBooked={0} viewer="driver" />
+        <PriceBreakdown
+          miles={values.route.miles}
+          mpg={car.mpg}
+          gasPrice={gasPrice}
+          fuel={car.fuel}
+          seatsOffered={values.seats}
+          ridersBooked={0}
+          viewer="driver"
+        />
       ) : (
         <Card>
           <Body muted>Pick a pickup spot and destination to see the price per seat.</Body>

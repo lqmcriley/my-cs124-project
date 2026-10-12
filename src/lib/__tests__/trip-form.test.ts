@@ -61,6 +61,20 @@ describe('validateTripForm', () => {
   });
 });
 
+describe('electric cars', () => {
+  const tesla: Car = { ...car, make: 'Tesla', model: 'Model 3', mpg: 4, fuel: 'electric' };
+
+  it('starts with a charging price per kWh', () => {
+    expect(emptyTripForm(tesla).gasPrice).toBe('0.20');
+  });
+
+  it('checks the charging price, not a gas price', () => {
+    const form = { ...valid, fuel: 'electric' as const, gasPrice: '0.25' };
+    expect(validateTripForm(form, car.seats, NOW)).toEqual({});
+    expect(validateTripForm({ ...form, gasPrice: '3.49' }, car.seats, NOW).gasPrice).toMatch(/per kWh/);
+  });
+});
+
 describe('seat maps', () => {
   it('starts with every seat of a car saved before seat maps', () => {
     // 3 passenger seats -> the 4-seat layout: front + two in the back.

@@ -11,6 +11,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { firstName, formatDeparture, formatMoney, formatTime } from '@/lib/format';
 import { terminalArrival } from '@/lib/airport';
+import { fuelTag, isElectric } from '@/lib/fuel';
 import { longTripLabel } from '@/lib/long-trip';
 import { payingRiders, riderEstimate } from '@/lib/booking';
 import type { Place } from '@/lib/config';
@@ -103,6 +104,7 @@ export function TripCard({ trip, reliability, rating, along, stop }: Props) {
           <Detail icon="moon-outline" text={longTripLabel(trip.long_trip_plan ?? null, trip.overnight_stop ?? null)!} />
         )}
         <Detail icon="people-outline" text={`${seatsLeft} ${seatsLeft === 1 ? 'seat' : 'seats'} left`} />
+        {fuelTag(trip.fuel) && <Detail icon={isElectric(trip.fuel) ? 'flash-outline' : 'water-outline'} text={fuelTag(trip.fuel)!} />}
         <Detail icon="location-outline" text={`Pickup: ${trip.pickup_spot}`} />
       </View>
     </PressableScale>

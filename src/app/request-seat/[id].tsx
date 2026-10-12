@@ -17,6 +17,7 @@ import { fetchTripSeats, requestSeat } from '@/lib/booking-api';
 import { riderEstimate } from '@/lib/booking';
 import type { Place } from '@/lib/config';
 import { friendlyError } from '@/lib/errors';
+import { carName, fuelTag } from '@/lib/fuel';
 import { firstName, formatDeparture, formatMoney } from '@/lib/format';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { computeRoute } from '@/lib/maps';
@@ -190,9 +191,7 @@ function RequestForm({
         {trip.car && !layout && (
           <View style={{ alignItems: 'center', paddingTop: Spacing.sm }}>
             <CarIllustration color={trip.car.color} bodyType={trip.car.body_type} width={200} />
-            <Body muted style={{ fontSize: 14 }}>
-              {trip.car.color} {trip.car.make} {trip.car.model}
-            </Body>
+            <Body muted style={{ fontSize: 14 }}>{carName(trip.car)}</Body>
           </View>
         )}
       </View>
@@ -201,9 +200,7 @@ function RequestForm({
         <View style={{ gap: Spacing.sm }}>
           <Label>Pick your seat</Label>
           {trip.car && (
-            <Body muted style={{ fontSize: 14 }}>
-              {trip.car.color} {trip.car.make} {trip.car.model}
-            </Body>
+            <Body muted style={{ fontSize: 14 }}>{[carName(trip.car), fuelTag(trip.fuel)].filter(Boolean).join(' · ')}</Body>
           )}
           <SeatMap
             layout={layout}

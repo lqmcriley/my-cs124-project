@@ -17,6 +17,7 @@ import type { Place } from '@/lib/config';
 import { firstName, formatDeparture, formatMoney } from '@/lib/format';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { computeRoute } from '@/lib/maps';
+import { longTripLabel, ROOM_RULE } from '@/lib/long-trip';
 import { StopParams, stopFromParams } from '@/lib/trip-search';
 import { fetchTrip } from '@/lib/trips-api';
 import type { TripWithDriver } from '@/lib/types';
@@ -159,6 +160,7 @@ function RequestForm({ trip, initialStop }: { trip: TripWithDriver; initialStop:
 
       <Card>
         <Label>Before you request</Label>
+        {trip.long_trip_plan === 'overnight' && <Body muted>{longTripLabel('overnight', trip.overnight_stop ?? null)}. {ROOM_RULE}</Body>}
         <Body muted>
           Once you&apos;re approved, you can cancel for free until 24 hours before the trip. After that it counts as a late cancel on
           your reliability, and you still owe your share so the others don&apos;t pay more.

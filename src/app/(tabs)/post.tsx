@@ -18,6 +18,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { PICKUP_SPOTS, Place, QUICK_PICKS } from '@/lib/config';
 import { formatDuration } from '@/lib/format';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
+import { isLongTrip } from '@/lib/long-trip';
 import { computeRoute } from '@/lib/maps';
 import { emptyTripForm, toTripRow, TripFormErrors, TripFormValues, validateTripForm } from '@/lib/trip-form';
 import { createTrip } from '@/lib/trips-api';
@@ -82,7 +83,7 @@ function PostTripForm({ car, driverId }: { car: Car; driverId: string }) {
       .then((route) => {
         if (stale) return;
         setValues((current) => ({ ...current, route }));
-        setOpen((current) => ({ ...current, where: false, [to.isAirport ? 'airport' : 'when']: true }));
+        setOpen((current) => ({ ...current, where: false, [to.isAirport ? 'airport' : isLongTrip(route.minutes) ? 'long' : 'when']: true }));
       })
       .catch((err: Error) => {
         if (!stale) setRouteError(err.message);

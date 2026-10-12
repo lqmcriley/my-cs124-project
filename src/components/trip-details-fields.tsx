@@ -11,14 +11,16 @@ import { Spacing } from '@/constants/theme';
 import { suggestedLeaveTime, terminalArrival } from '@/lib/airport';
 import { FLEX_WINDOWS, LUGGAGE_OPTIONS, SHUTTLE_MINUTE_OPTIONS, TRIP_NOTES_MAX_LENGTH } from '@/lib/config';
 import { formatDeparture, formatFlex, formatTime } from '@/lib/format';
+import { estimatedArrival, isLongTrip, longTripLabel, ROOM_RULE } from '@/lib/long-trip';
 import type { TripFormErrors, TripFormValues } from '@/lib/trip-form';
 
-export type TripSection = 'where' | 'airport' | 'when' | 'seats' | 'notes' | 'gas';
+export type TripSection = 'where' | 'airport' | 'long' | 'when' | 'seats' | 'notes' | 'gas';
 
 // Which form fields live in which section (used to open sections that have errors).
 const SECTION_FIELDS: Record<TripSection, (keyof TripFormValues)[]> = {
   where: ['from', 'to', 'route'],
   airport: ['flightNumber', 'flightDepartsAt', 'parkingLocation'],
+  long: ['overnightStop'],
   when: ['departure'],
   seats: ['seats'],
   notes: ['notes'],
@@ -150,6 +152,48 @@ export function TripDetailsFields({ values, errors, set, maxSeats, minSeats = 1,
               <Button title="Use this time" icon="checkmark" variant="secondary" onPress={() => set('departure', suggestion)} />
             </View>
           )}
+        </FoldSection>
+      )}
+
+      {isLongTrip(driveMinutes) && driveMinutes !== null && (
+        <FoldSection
+          title="Long drive"
+          icon="moon-outline"
+          summary={longTripLabel(values.longTripPlan, values.overnightStop.trim() || null) ?? ''}
+          open={!!open.long}
+          onToggle={() => toggle('long')}
+          hasError={sectionHasError('long', errors)}>
+          <Body muted>
+            This drive is about {Math.round(driveMinutes / 60)} hours. Let riders know your plan.
+          </Body>
+          <SegmentedControl
+            options={[
+              { value: 'overnight', label: 'Overnight stop', icon: 'moon-outline' },
+              { value: 'straight', label: 'Straight through', icon: 'car-outline' },
+            ]}
+            value={values.longTripPlan}
+            onChange={(plan) => set('longTripPlan', plan)}
+          />
+          {values.longTripPlan === 'overnight' && (
+            <TextField
+              label="Roughly where you'll stop (optional)"
+              placeholder="e.g. Youngstown, OH"
+              value={values.overnightStop}
+              onChangeText={(text) => set('overnightStop', text)}
+              maxLength={100}
+              error={errors.overnightStop}
+            />
+          )}
+          {values.departure && (
+            <IconRow
+              icon="flag-outline"
+              muted
+              text={`Arrives around ${formatDeparture(estimatedArrival(values.departure, driveMinutes, values.longTripPlan))}`}
+            />
+          )}
+          <Body muted style={{ fontSize: 14 }}>
+            {values.longTripPlan === 'overnight' ? ROOM_RULE : 'Plan a short break every few hours. Breaks are included in the arrival time.'}
+          </Body>
         </FoldSection>
       )}
 

@@ -50,6 +50,7 @@ import {
 import { LUGGAGE_OPTIONS } from '@/lib/config';
 import { firstName, formatDeparture, formatDuration, formatFlex, formatMoney } from '@/lib/format';
 import { decodePolyline } from '@/lib/geo';
+import { estimatedArrival, longTripLabel, ROOM_RULE } from '@/lib/long-trip';
 import { errorHaptic, successHaptic, tapHaptic } from '@/lib/haptics';
 import type { PaymentMethods } from '@/lib/payments';
 import type { Reliability } from '@/lib/reliability';
@@ -454,6 +455,17 @@ export default function TripDetailScreen() {
         </View>
       )}
       <ErrorText>{actionError}</ErrorText>
+
+      {trip.long_trip_plan && trip.route_minutes ? (
+        <Card>
+          <View style={styles.row}>
+            <Ionicons name="moon-outline" size={20} color={colors.primary} />
+            <Label>{longTripLabel(trip.long_trip_plan, trip.overnight_stop ?? null)}</Label>
+          </View>
+          <IconRow icon="flag-outline" muted text={`Arrives around ${formatDeparture(estimatedArrival(departure, trip.route_minutes, trip.long_trip_plan))}`} />
+          <Body muted style={{ fontSize: 14 }}>{trip.long_trip_plan === 'overnight' ? ROOM_RULE : 'Short breaks every few hours are included in the arrival time.'}</Body>
+        </Card>
+      ) : null}
 
       {trip.parking === 'offsite' && (
         <View style={[styles.headsUp, { borderColor: colors.primary, backgroundColor: colors.card }]}>

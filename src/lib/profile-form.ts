@@ -1,8 +1,9 @@
 // The rules for the profile + car form, kept separate from the screen so they're easy to test.
 
-import { BIO_MAX_LENGTH, CarBodyType, MAX_MPG, MAX_PASSENGER_SEATS, MIN_MPG } from './config';
+import { BIO_MAX_LENGTH, CarBodyType, MAX_MPG, MIN_MPG } from './config';
 import { cleanHandle, handleError, PaymentMethods } from './payments';
 import { formatPhone, normalizePhone } from './phone';
+import { layoutForSeats, passengerCount, SeatLayout } from './seats';
 import type { Car, ClassYear, Profile } from './types';
 import { chatPreferenceFromVibe, Vibes, vibesFrom } from './vibes';
 
@@ -19,7 +20,7 @@ export type ProfileFormValues = {
   color: string;
   plate: string;
   mpg: string;
-  seats: string;
+  seatLayout: SeatLayout; // how many seats, in which rows
   bodyType: CarBodyType;
   // Payment handles (optional, private)
   venmo: string;
@@ -48,7 +49,7 @@ export function initialFormValues(
     color: car?.color ?? '',
     plate: car?.plate ?? '',
     mpg: car ? String(car.mpg) : '',
-    seats: car ? String(car.seats) : '',
+    seatLayout: car?.seat_layout ?? (car ? layoutForSeats(car.seats) : '5'),
     bodyType: car?.body_type ?? 'sedan',
     venmo: payment?.venmo_username ?? '',
     cashapp: payment?.cashapp_cashtag ?? '',
@@ -82,11 +83,6 @@ export function validateProfileForm(values: ProfileFormValues): ProfileFormError
     const mpg = Number(values.mpg);
     if (!values.mpg.trim() || !Number.isFinite(mpg) || mpg < MIN_MPG || mpg > MAX_MPG) {
       errors.mpg = `Enter your car's MPG (${MIN_MPG}–${MAX_MPG}).`;
-    }
-
-    const seats = Number(values.seats);
-    if (!Number.isInteger(seats) || seats < 1 || seats > MAX_PASSENGER_SEATS) {
-      errors.seats = `Enter 1–${MAX_PASSENGER_SEATS} passenger seats.`;
     }
   }
 
@@ -122,7 +118,8 @@ export function toCarRow(userId: string, values: ProfileFormValues) {
     color: values.color.trim(),
     plate: values.plate.trim().toUpperCase(),
     mpg: Number(values.mpg),
-    seats: Number(values.seats),
+    seats: passengerCount(values.seatLayout),
+    seat_layout: values.seatLayout,
     body_type: values.bodyType,
   };
 }

@@ -4,6 +4,7 @@
 
 import type { Place } from './config';
 import type { PaymentMethods } from './payments';
+import type { SeatHold, SeatId } from './seats';
 import { supabase } from './supabase';
 import { TRIP_WITH_DRIVER } from './trips-api';
 import type { RequestWithRider, RequestWithTrip, TripRequest, TripRider, TripWithDriver } from './types';
@@ -14,6 +15,7 @@ export async function requestSeat(input: {
   riderMiles: number | null;
   message: string;
   parkingAcknowledged: boolean;
+  seat: SeatId | null; // required when the trip has a seat map
 }): Promise<void> {
   const { error } = await supabase.rpc('request_seat', {
     p_trip_id: input.tripId,
@@ -24,6 +26,8 @@ export async function requestSeat(input: {
     p_dropoff_lng: input.dropoff?.longitude ?? null,
     p_message: input.message.trim() || null,
     p_parking_acknowledged: input.parkingAcknowledged,
+    // Only sent when picked, so this still works before the seat-map migration is run.
+    ...(input.seat ? { p_seat: input.seat } : {}),
   });
   if (error) throw new Error(error.message);
 }
@@ -41,6 +45,16 @@ export async function cancelRequest(requestId: string): Promise<void> {
 export async function cancelTrip(tripId: string): Promise<void> {
   const { error } = await supabase.from('trips').update({ status: 'cancelled' }).eq('id', tripId);
   if (error) throw new Error(`Couldn't cancel the trip: ${error.message}`);
+}
+
+// Who holds which seat on a trip's seat map. Waiting requests show without a name
+// (except to the driver and to the rider who made them).
+export async function fetchTripSeats(tripId: string): Promise<SeatHold[]> {
+  const { data, error } = await supabase.rpc('trip_seats', { p_trip_id: tripId });
+  if (error) throw new Error(`Couldn't load the seat map: ${error.message}`);
+  return ((data ?? []) as { seat: string; status: 'pending' | 'approved'; is_me: boolean; first_name: string | null; avatar_url: string | null }[]).map(
+    (row) => ({ seat: row.seat, status: row.status, isMe: row.is_me, firstName: row.first_name, avatarUrl: row.avatar_url }),
+  );
 }
 
 // First name + photo of approved riders. Anyone signed in can see these.

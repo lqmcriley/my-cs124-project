@@ -4,15 +4,17 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
+import { RefreshControl, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { AnimatedItem, PressableScale } from '@/components/motion';
-import { Badge, Body, Card, ErrorText, Heading, Label, Screen, SegmentedControl, Text } from '@/components/ui';
+import { EmptyState, LoadError, SkeletonList } from '@/components/states';
+import { Badge, Body, ErrorText, Heading, Label, Screen, SegmentedControl, Text } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { REQUEST_STATUS_TEXT, splitMyTrips } from '@/lib/booking';
 import { fetchMyTrips, MyTrips } from '@/lib/booking-api';
+import { friendlyError } from '@/lib/errors';
 import { firstName, formatDeparture } from '@/lib/format';
 import type { RequestStatus, TripWithDriver } from '@/lib/types';
 import { useAuth } from '@/providers/auth-provider';
@@ -33,7 +35,7 @@ export default function MyTripsScreen() {
           setData(result);
           setError('');
         })
-        .catch((err: Error) => setError(err.message)),
+        .catch((err: Error) => setError(friendlyError(err))),
     [userId],
   );
 
@@ -91,17 +93,20 @@ export default function MyTripsScreen() {
         onChange={setView}
       />
 
-      <ErrorText>{error}</ErrorText>
-      {!shown && !error && <ActivityIndicator color={colors.primary} size="large" style={{ marginTop: Spacing.lg }} />}
+      {!shown && (error ? <LoadError message={error} onRetry={load} /> : <SkeletonList count={2} />)}
+      {shown && <ErrorText>{error}</ErrorText>}
 
-      {nothing && (
-        <Card>
-          <Body style={{ fontWeight: '600' }}>{view === 'upcoming' ? 'No upcoming trips' : 'No past trips yet'}</Body>
-          <Body muted>
-            {view === 'upcoming' ? 'Find a ride or post a trip, and it will show up here.' : 'Trips you have taken will show up here.'}
-          </Body>
-        </Card>
-      )}
+      {nothing &&
+        (view === 'upcoming' ? (
+          <EmptyState
+            icon="calendar-outline"
+            title="No upcoming trips"
+            message="Book a seat or post a trip, and it will show up here."
+            action={{ title: 'Find a ride', icon: 'search', onPress: () => router.navigate('/') }}
+          />
+        ) : (
+          <EmptyState icon="time-outline" title="No past trips yet" message="Trips you've taken will show up here, so you can rate the ride." />
+        ))}
 
       {shown && shown.driving.length > 0 && (
         <View style={{ gap: Spacing.sm }}>

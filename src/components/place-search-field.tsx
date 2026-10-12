@@ -12,6 +12,7 @@ import { Body, ErrorText, Label, Text } from '@/components/ui';
 import { FontFamily, Radius, Spacing, TapTarget } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Place } from '@/lib/config';
+import { friendlyError } from '@/lib/errors';
 import { autocomplete, newSessionToken, placeDetails, Suggestion } from '@/lib/maps';
 
 const MIN_CHARACTERS = 3;
@@ -51,7 +52,7 @@ export function PlaceSearchField({ label, value, onChange, placeholder, error, c
         })
         .catch((err: Error) => {
           if (stale) return;
-          setSearchError(err.message);
+          setSearchError(friendlyError(err));
           setLoadingSuggestions(false);
         });
     }, 300);
@@ -70,7 +71,7 @@ export function PlaceSearchField({ label, value, onChange, placeholder, error, c
       setSuggestions([]);
       setSessionToken(newSessionToken());
     } catch (err) {
-      setSearchError(err instanceof Error ? err.message : "Couldn't load that place.");
+      setSearchError(friendlyError(err, "Couldn't load that place."));
     } finally {
       setPicking(false);
     }

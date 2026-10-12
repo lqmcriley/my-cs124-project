@@ -3,21 +3,25 @@
 
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 import { CarIllustration } from '@/components/car-illustration';
 import { PlaceSearchField } from '@/components/place-search-field';
+import { SeatMap } from '@/components/seat-map';
+import { EmptyState } from '@/components/states';
 import { Body, Button, Card, Checkbox, ErrorText, Heading, IconRow, Label, Screen, SegmentedControl, Text, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { terminalArrival } from '@/lib/airport';
-import { requestSeat } from '@/lib/booking-api';
+import { fetchTripSeats, requestSeat } from '@/lib/booking-api';
 import { riderEstimate } from '@/lib/booking';
 import type { Place } from '@/lib/config';
+import { friendlyError } from '@/lib/errors';
 import { firstName, formatDeparture, formatMoney } from '@/lib/format';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { computeRoute } from '@/lib/maps';
 import { longTripLabel, ROOM_RULE } from '@/lib/long-trip';
+import { freeSeats, layoutSeats, SeatHold, SeatId, seatLabel } from '@/lib/seats';
 import { StopParams, stopFromParams } from '@/lib/trip-search';
 import { fetchTrip } from '@/lib/trips-api';
 import type { TripWithDriver } from '@/lib/types';
@@ -25,21 +29,24 @@ import type { TripWithDriver } from '@/lib/types';
 const MESSAGE_MAX_LENGTH = 300;
 
 export default function RequestSeatScreen() {
-  const { id, ...stopParams } = useLocalSearchParams<{ id: string } & StopParams>();
+  const { id, seat: seatParam, ...stopParams } = useLocalSearchParams<{ id: string; seat?: string } & StopParams>();
   // Coming from an "along the way" search? Start with your stop filled in.
   const stop = stopFromParams(stopParams);
   const colors = useTheme();
   const [trip, setTrip] = useState<TripWithDriver | null | undefined>(undefined);
+  const [holds, setHolds] = useState<SeatHold[]>([]); // who holds which seat on the map
   const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     let stale = false;
-    fetchTrip(id)
-      .then((result) => {
-        if (!stale) setTrip(result);
+    Promise.all([fetchTrip(id), fetchTripSeats(id).catch(() => [])])
+      .then(([result, seatHolds]) => {
+        if (stale) return;
+        setTrip(result);
+        setHolds(seatHolds);
       })
       .catch((err: Error) => {
-        if (!stale) setLoadError(err.message);
+        if (!stale) setLoadError(friendlyError(err));
       });
     return () => {
       stale = true;
@@ -60,11 +67,35 @@ export default function RequestSeatScreen() {
       </Screen>
     );
   }
-  return <RequestForm trip={trip} initialStop={stop} />;
+  if (trip.is_sample) {
+    return (
+      <Screen edges={['bottom']}>
+        <EmptyState icon="information-circle-outline" title="This is a sample trip" message="It shows how Hitch Illini works, so you can't request a seat. Real trips work exactly like this one." />
+      </Screen>
+    );
+  }
+  return <RequestForm trip={trip} holds={holds} initialStop={stop} initialSeat={seatParam ?? null} />;
 }
 
-function RequestForm({ trip, initialStop }: { trip: TripWithDriver; initialStop: Place | null }) {
+function RequestForm({
+  trip,
+  holds,
+  initialStop,
+  initialSeat,
+}: {
+  trip: TripWithDriver;
+  holds: SeatHold[];
+  initialStop: Place | null;
+  initialSeat: string | null; // tapped on the trip page's seat map
+}) {
   const colors = useTheme();
+  const layout = trip.seat_layout ?? null;
+  const openSeats = trip.open_seats ?? [];
+  const free = layout ? freeSeats(layout, openSeats, holds) : [];
+  // Start with the seat you tapped on the trip page (if it's still free), or the only one left.
+  const [seat, setSeat] = useState<SeatId | null>(
+    () => free.find((id) => id === initialSeat) ?? (free.length === 1 ? free[0] : null),
+  );
   const [wholeWay, setWholeWay] = useState(initialStop === null);
   const [dropoff, setDropoff] = useState<Place | null>(initialStop);
   const [dropoffMiles, setDropoffMiles] = useState<number | null>(null);
@@ -88,7 +119,7 @@ function RequestForm({ trip, initialStop }: { trip: TripWithDriver; initialStop:
         }
       })
       .catch((err: Error) => {
-        if (!stale) setDropoffError(err.message);
+        if (!stale) setDropoffError(friendlyError(err));
       });
     return () => {
       stale = true;
@@ -116,6 +147,10 @@ function RequestForm({ trip, initialStop }: { trip: TripWithDriver; initialStop:
       setSaveError('Choose where you are getting off, or pick "The whole way".');
       return;
     }
+    if (layout && !seat) {
+      setSaveError('Tap the seat you want on the car map.');
+      return;
+    }
     if (needsParkingOk && !parkingOk) {
       setSaveError('Please confirm the parking and shuttle plan.');
       return;
@@ -128,12 +163,16 @@ function RequestForm({ trip, initialStop }: { trip: TripWithDriver; initialStop:
         riderMiles,
         message,
         parkingAcknowledged: parkingOk,
+        seat,
       });
       successHaptic();
+      if (trip.is_practice) {
+        Alert.alert("You're in!", 'Practice rides are approved right away. On a real trip, the driver approves you first. Open the trip to see your seat and the group chat.');
+      }
       router.back();
     } catch (err) {
       errorHaptic();
-      setSaveError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setSaveError(friendlyError(err, 'Something went wrong. Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -148,7 +187,7 @@ function RequestForm({ trip, initialStop }: { trip: TripWithDriver; initialStop:
         <IconRow icon="time-outline" text={`Leaves ${formatDeparture(new Date(trip.departure_at))}`} />
         {arrival && <IconRow icon="airplane-outline" text={`At the terminal around ${formatDeparture(arrival)}`} />}
         <IconRow icon="person-outline" text={`Driving: ${trip.driver.full_name}`} />
-        {trip.car && (
+        {trip.car && !layout && (
           <View style={{ alignItems: 'center', paddingTop: Spacing.sm }}>
             <CarIllustration color={trip.car.color} bodyType={trip.car.body_type} width={200} />
             <Body muted style={{ fontSize: 14 }}>
@@ -157,6 +196,35 @@ function RequestForm({ trip, initialStop }: { trip: TripWithDriver; initialStop:
           </View>
         )}
       </View>
+
+      {layout && (
+        <View style={{ gap: Spacing.sm }}>
+          <Label>Pick your seat</Label>
+          {trip.car && (
+            <Body muted style={{ fontSize: 14 }}>
+              {trip.car.color} {trip.car.make} {trip.car.model}
+            </Body>
+          )}
+          <SeatMap
+            layout={layout}
+            openSeats={openSeats}
+            holds={holds}
+            driver={{ name: trip.driver.full_name, avatarUrl: trip.driver.avatar_url }}
+            mode="pick"
+            selected={seat}
+            onPick={(picked) => setSeat(picked === seat ? null : picked)}
+          />
+          {free.length === 0 ? (
+            <ErrorText>Every seat is taken or held right now. Check back later in case someone cancels.</ErrorText>
+          ) : (
+            seat && (
+              <Body style={{ textAlign: 'center', fontWeight: '600' }}>
+                {seatLabel(seat)} seat{layoutSeats(layout).find((candidate) => candidate.id === seat)?.cramped ? ' (a bit tight)' : ''}
+              </Body>
+            )
+          )}
+        </View>
+      )}
 
       <Card>
         <Label>Before you request</Label>
@@ -225,7 +293,12 @@ function RequestForm({ trip, initialStop }: { trip: TripWithDriver; initialStop:
       )}
 
       <ErrorText>{saveError}</ErrorText>
-      <Button title="Send request" onPress={onSubmit} loading={saving} disabled={measuring} />
+      <Button
+        title={seat ? `Request the ${seatLabel(seat).toLowerCase()} seat` : 'Send request'}
+        onPress={onSubmit}
+        loading={saving}
+        disabled={measuring || (layout !== null && free.length === 0)}
+      />
     </Screen>
   );
 }

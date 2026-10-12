@@ -35,6 +35,7 @@ export function riderEstimate(trip: Trip, riderMiles: number | null, alreadyBook
 // Why this person can't request a seat right now, or null if they can.
 export function requestBlocker(trip: Trip, userId: string, myRequest: TripRequest | null, now: Date = new Date()): string | null {
   if (trip.driver_id === userId) return "This is your trip.";
+  if (trip.is_sample) return "This is a sample trip to show how Hitch Illini works, so you can't request a seat.";
   if (trip.status === 'cancelled') return 'This trip was cancelled.';
   if (new Date(trip.departure_at).getTime() <= now.getTime()) return 'This trip already left.';
   if (myRequest && (myRequest.status === 'pending' || myRequest.status === 'approved')) return 'You already requested a seat.';

@@ -5,9 +5,11 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
+import { EmptyState } from '@/components/states';
 import { Body, Button, Card, ErrorText, Screen, Text } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { friendlyError } from '@/lib/errors';
 import { tapHaptic } from '@/lib/haptics';
 import { BlockedPerson, fetchBlockedPeople, unblockUser } from '@/lib/safety-api';
 import { useAuth } from '@/providers/auth-provider';
@@ -24,7 +26,7 @@ export default function BlockedScreen() {
     () =>
       fetchBlockedPeople(userId)
         .then(setPeople)
-        .catch((err: Error) => setError(err.message)),
+        .catch((err: Error) => setError(friendlyError(err))),
     [userId],
   );
 
@@ -41,7 +43,7 @@ export default function BlockedScreen() {
       tapHaptic();
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't unblock.");
+      setError(friendlyError(err, "Couldn't unblock."));
     } finally {
       setBusy(null);
     }
@@ -52,11 +54,9 @@ export default function BlockedScreen() {
       <Body muted>Blocked people can&apos;t request your trips, and you won&apos;t see theirs. They aren&apos;t told.</Body>
       <ErrorText>{error}</ErrorText>
       {people === null ? (
-        <ActivityIndicator color={colors.primary} />
+        error ? null : <ActivityIndicator color={colors.primary} />
       ) : people.length === 0 ? (
-        <Card>
-          <Body muted>You haven&apos;t blocked anyone.</Body>
-        </Card>
+        <EmptyState icon="shield-checkmark-outline" title="Nobody blocked" message="If someone makes you uncomfortable, you can block them from their profile or trip." />
       ) : (
         people.map((person) => (
           <Card key={person.blocked_id}>

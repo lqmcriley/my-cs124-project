@@ -16,6 +16,7 @@ import { Body, Button, Card, Chip, ErrorText, Heading, Screen, TextField } from 
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { PICKUP_SPOTS, Place, QUICK_PICKS } from '@/lib/config';
+import { friendlyError } from '@/lib/errors';
 import { formatDuration } from '@/lib/format';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { isLongTrip } from '@/lib/long-trip';
@@ -86,7 +87,7 @@ function PostTripForm({ car, driverId }: { car: Car; driverId: string }) {
         setOpen((current) => ({ ...current, where: false, [to.isAirport ? 'airport' : isLongTrip(route.minutes) ? 'long' : 'when']: true }));
       })
       .catch((err: Error) => {
-        if (!stale) setRouteError(err.message);
+        if (!stale) setRouteError(friendlyError(err));
       });
     return () => {
       stale = true;
@@ -122,7 +123,7 @@ function PostTripForm({ car, driverId }: { car: Car; driverId: string }) {
       router.push(`/trip/${id}`);
     } catch (err) {
       errorHaptic();
-      setSaveError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setSaveError(friendlyError(err, 'Something went wrong. Please try again.'));
     } finally {
       setSaving(false);
     }

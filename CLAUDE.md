@@ -12,7 +12,7 @@ The owner is a beginner. Keep code simple, explain changes in plain language, an
 - Give step-by-step instructions (numbered, with exact button names) for anything the owner has to do in Supabase, Google Cloud, Expo or on their phone.
 - Keep replies short and skimmable. Check in rather than dumping everything at once.
 
-**Status:** Phases 1–4 + reliability built and partly tested by the owner. Phase 5 (reviews, odometer photos, report/block, share trip, 911, private phone numbers shared after approval) built, awaiting owner testing. Next: Phase 6 (polish + seed data). "Along the way" search built (owner's idea): trips whose route passes within 12 mi of a searched destination show up with the price for the rider's part, and the stop carries through to Request a seat.
+**Status:** Phases 1–4 + reliability built and partly tested by the owner. Phase 5 (reviews, odometer photos, report/block, share trip, 911, private phone numbers shared after approval) built, awaiting owner testing. Phase 6 (polish + sample trips) built, awaiting owner testing. All spec phases are done; future ideas live in `ROADMAP.md`. "Along the way" search built (owner's idea): trips whose route passes within 12 mi of a searched destination show up with the price for the rider's part, and the stop carries through to Request a seat.
 
 **Pricing decision (owner's choice):** riders pay based on how many people actually ride. Trips show the price "if you join now" (booked riders + you), "as low as" (full car), and a per-rider-count table. What each rider owes after departure uses `splitGasByRide()` (owner's choice): the route is cut into stretches at each drop-off and each stretch's gas is split between whoever is in the car (driver included), with the IRS cap per stretch. Riders get everyone's distances (no names) via the `trip_split()` SQL function. Pre-departure prices are labeled "about". See `src/lib/pricing.ts`.
 
@@ -66,10 +66,13 @@ src/
     booking.ts, booking-api.ts   Booking rules (tested) + calls to request_seat / respond_to_request / cancel_request / trip_riders
     payments.ts             Payment handle cleanup/validation + pay links (tested)
     chat-api.ts             Load/send chat messages + live subscription
+    seats.ts                Seat layouts, offered seats, seat states (tested)
+    errors.ts               friendlyError(): technical errors -> plain sentences (tested)
     types.ts                Row types; keep in sync with migrations
     __tests__/              Jest unit tests for the pure lib files
   providers/auth-provider.tsx   session, profile, car, loading, refreshProfile, signOut
 supabase/migrations/        SQL, one file per phase; run in filename order
+supabase/seed/              Sample trips for demos (add / remove), pasted into the SQL Editor
 supabase/tests/             Database tests (stubs.sql fakes Supabase's auth/storage; *.test.sql print PASS lines)
 scripts/test-db.sh          Runs all migrations + database tests on a throwaway local Postgres
 ```
@@ -82,6 +85,9 @@ scripts/test-db.sh          Runs all migrations + database tests on a throwaway 
 - Vibe check: five 0–4 sliders on profiles (`lib/vibes.ts`, `components/vibes.tsx`): chat, music, temperature, windows, stops. `chat_preference` is kept in sync from the chat slider.
 - Along the way: `searchTrips()` / `alongTheWay()` in `lib/trip-search.ts` use the stored route polyline (`closestPointOnRoute` in `lib/geo.ts`). Tested on a real UIUC→Hartford route in `lib/__fixtures__/`. Stops pass between screens as `stopName/stopAddress/stopLat/stopLng` link params.
 - Phase 5: reviews are public, one per person per trip, 14-day window after departure, can't be edited. Reports are private (reporter + dashboard only). Blocks stop requests/approvals both ways (trigger on trip_requests) and hide trips via `blocked_user_ids()`. Odometer photos live in the private `odometer` bucket at `<trip id>/<start|end>`, viewed via signed URLs. Phone numbers live in private `contact_info` and are revealed only via `trip_contacts()` between a driver and approved riders.
+- Phase 6 (owner's choices): app icon = the split-circle logo on light grey (`assets/images/`, drawn by a script, not a real photo). Sample trips are labeled "Sample" and can't be requested (`trips.is_sample`, trigger on trip_requests; the app can never set it). Add/refresh them with `supabase/seed/sample_trips.sql` (dates are relative to today, made-up drivers are banned from signing in), remove them all with `supabase/seed/remove_sample_trips.sql`. The same seed adds one practice ride (`trips.is_practice`, driver "Taylor Practice") anyone can join to try booking: a trigger approves its requests instantly. Neither flag can be set from the app.
+- Seat maps (owner's choice): each car has a `seat_layout` ('2', '4', '5', '5_cramped', '7', '8'; `lib/seats.ts`, mirrored in SQL `layout_seats()`), and `cars.seats` always follows it (trigger). Drivers tap seats to offer on Post/Edit trip (`trips.open_seats`, count = `seats_offered`); riders must pick an open seat (`request_seat(..., p_seat)`). A pending request holds its seat; decline/cancel frees it; one person per seat (unique index). Drivers can't un-offer a held seat. Same price for every seat. `trip_seats()` shows who sits where (names only for approved riders, plus the driver and yourself). Trips without `seat_layout` (posted before) work as plain "a seat". Drawn by `components/seat-map.tsx`. Like a plane seat map, riders can tap an open seat right on the trip page; it opens Request a seat with that seat chosen (`seat` link param).
+- Screens use `components/states.tsx` for empty (`EmptyState`), failed (`LoadError` with Try again) and loading (`SkeletonList`) states. Show errors through `friendlyError()` in `lib/errors.ts`, never a raw `err.message`.
 - Haptics on important actions (`lib/haptics.ts`) and subtle Reanimated motion (`components/motion.tsx`): owner chose haptics + smooth content, subtle, no springy taps.
 - Start the app with `EXPO_UNSTABLE_TUNNEL_V2=1 npx expo start --tunnel` (Expo's ngrok tunnel is broken).
 - Payments open only after departure, so the rider count is final: what a rider owes = `amountOwed()` in `lib/booking.ts`. Drivers mark paid via `set_request_paid`; driver handles reach riders only via `trip_payment_handles`.

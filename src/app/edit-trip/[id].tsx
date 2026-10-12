@@ -11,7 +11,10 @@ import { Body, Button, Card, ErrorText, Heading, Label, Screen } from '@/compone
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { payingRiders } from '@/lib/booking';
+import { fetchTripSeats } from '@/lib/booking-api';
+import { friendlyError } from '@/lib/errors';
 import { formatMoney } from '@/lib/format';
+import type { SeatHold } from '@/lib/seats';
 import { toTripUpdate, tripFormFromTrip, TripFormErrors, TripFormValues, validateTripForm } from '@/lib/trip-form';
 import { fetchTrip, updateTrip } from '@/lib/trips-api';
 import type { TripWithDriver } from '@/lib/types';
@@ -22,16 +25,19 @@ export default function EditTripScreen() {
   const colors = useTheme();
   const { session } = useAuth();
   const [trip, setTrip] = useState<TripWithDriver | null | undefined>(undefined);
+  const [holds, setHolds] = useState<SeatHold[]>([]); // seats riders already asked for
   const [error, setError] = useState('');
 
   useEffect(() => {
     let stale = false;
-    fetchTrip(id)
-      .then((result) => {
-        if (!stale) setTrip(result);
+    Promise.all([fetchTrip(id), fetchTripSeats(id).catch(() => [])])
+      .then(([result, seatHolds]) => {
+        if (stale) return;
+        setTrip(result);
+        setHolds(seatHolds);
       })
       .catch((err: Error) => {
-        if (!stale) setError(err.message);
+        if (!stale) setError(friendlyError(err));
       });
     return () => {
       stale = true;
@@ -60,10 +66,10 @@ export default function EditTripScreen() {
       </Screen>
     );
   }
-  return <EditTripForm trip={trip} />;
+  return <EditTripForm trip={trip} holds={holds} />;
 }
 
-function EditTripForm({ trip }: { trip: TripWithDriver }) {
+function EditTripForm({ trip, holds }: { trip: TripWithDriver; holds: SeatHold[] }) {
   const [values, setValues] = useState<TripFormValues>(() => tripFormFromTrip(trip));
   const [errors, setErrors] = useState<TripFormErrors>({});
   const [saveError, setSaveError] = useState('');
@@ -95,7 +101,7 @@ function EditTripForm({ trip }: { trip: TripWithDriver }) {
       await updateTrip(trip.id, toTripUpdate(values));
       router.back();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setSaveError(friendlyError(err, 'Something went wrong. Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -114,7 +120,16 @@ function EditTripForm({ trip }: { trip: TripWithDriver }) {
         </Body>
       </Card>
 
-      <TripDetailsFields values={values} errors={errors} set={set} maxSeats={maxSeats} minSeats={Math.max(trip.seats_booked, 1)} open={open} toggle={toggle} />
+      <TripDetailsFields
+        values={values}
+        errors={errors}
+        set={set}
+        maxSeats={maxSeats}
+        minSeats={Math.max(trip.seats_booked, 1)}
+        holds={holds}
+        open={open}
+        toggle={toggle}
+      />
 
       <PriceBreakdown
         miles={trip.route_miles}

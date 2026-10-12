@@ -7,6 +7,7 @@ import { Alert, StyleSheet, View } from 'react-native';
 
 import { Body, Button, Chip, ErrorText, Heading, Label, Screen, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
+import { friendlyError } from '@/lib/errors';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { REPORT_REASONS, reportUser } from '@/lib/safety-api';
 import type { ReportReason } from '@/lib/types';
@@ -36,7 +37,7 @@ export default function ReportScreen() {
       router.back();
     } catch (err) {
       errorHaptic();
-      setError(err instanceof Error ? err.message : "Couldn't send. Please try again.");
+      setError(friendlyError(err, "Couldn't send. Please try again."));
     } finally {
       setSaving(false);
     }

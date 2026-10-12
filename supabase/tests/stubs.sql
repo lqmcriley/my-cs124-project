@@ -6,7 +6,7 @@ create role authenticated nologin;
 create schema auth;
 create schema storage;
 grant usage on schema public, auth, storage to anon, authenticated;
-create table auth.users (id uuid primary key default gen_random_uuid(), email text);
+create table auth.users (id uuid primary key default gen_random_uuid(), email text, banned_until timestamptz);
 -- In tests, "who is signed in" comes from: set request.jwt.claim.sub = '<user id>';
 create function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid

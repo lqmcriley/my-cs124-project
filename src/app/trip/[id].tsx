@@ -6,7 +6,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, StyleSheet, View } from 'react-native';
+import { Alert, Linking, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { AnimatedItem, PressableScale } from '@/components/motion';
@@ -16,6 +16,8 @@ import { CarIllustration } from '@/components/car-illustration';
 import { OdometerCard } from '@/components/odometer-card';
 import { showPersonActions } from '@/components/person-actions';
 import { SafetyCard } from '@/components/safety-card';
+import { SeatMap } from '@/components/seat-map';
+import { EmptyState, LoadError, SkeletonList } from '@/components/states';
 import { ReliabilityBadge } from '@/components/reliability-badge';
 import { VibeMeters } from '@/components/vibes';
 import { RouteMap } from '@/components/route-map';
@@ -41,6 +43,7 @@ import {
   fetchTripSplit,
   fetchRequestsForTrip,
   fetchTripRiders,
+  fetchTripSeats,
   reportDriverNoShow,
   respondToRequest,
   setNoShow,
@@ -48,6 +51,7 @@ import {
   SplitRow,
 } from '@/lib/booking-api';
 import { LUGGAGE_OPTIONS } from '@/lib/config';
+import { friendlyError } from '@/lib/errors';
 import { firstName, formatDeparture, formatDuration, formatFlex, formatMoney } from '@/lib/format';
 import { decodePolyline } from '@/lib/geo';
 import { estimatedArrival, longTripLabel, ROOM_RULE } from '@/lib/long-trip';
@@ -59,6 +63,7 @@ import { canReviewNow, formatRating, RatingSummary } from '@/lib/reviews';
 import { fetchMyReviewsForTrip, fetchRatingSummary } from '@/lib/reviews-api';
 import { fetchTripContacts, TripContact } from '@/lib/safety-api';
 import { formatPhone } from '@/lib/phone';
+import { SeatHold, seatLabel } from '@/lib/seats';
 import { alongTheWay, StopParams, stopFromParams, stopToParams } from '@/lib/trip-search';
 import { fetchTrip } from '@/lib/trips-api';
 import type { Stretch } from '@/lib/pricing';
@@ -76,18 +81,20 @@ type Loaded = {
   contacts: TripContact[]; // phone numbers, only for people in the car
   reviewedCount: number; // how many people you've already rated on this trip
   split: SplitRow[]; // how far each paying rider rides (riders only; drivers use requests)
+  holds: SeatHold[]; // who holds which seat (trips with a seat map)
   loadedAt: Date; // "now" for deciding if the trip has left
 };
 
 async function loadTripPage(tripId: string, userId: string): Promise<Loaded> {
   const trip = await fetchTrip(tripId);
   const loadedAt = new Date();
-  if (!trip) return { trip: null, riders: [], requests: [], myRequest: null, handles: null, reliability: {}, ratings: {}, contacts: [], reviewedCount: 0, split: [], loadedAt };
+  if (!trip) return { trip: null, riders: [], requests: [], myRequest: null, handles: null, reliability: {}, ratings: {}, contacts: [], reviewedCount: 0, split: [], holds: [], loadedAt };
   const isDriver = trip.driver_id === userId;
-  const [riders, requests, myRequest] = await Promise.all([
+  const [riders, requests, myRequest, holds] = await Promise.all([
     fetchTripRiders(tripId),
     isDriver ? fetchRequestsForTrip(tripId) : Promise.resolve([]),
     isDriver ? Promise.resolve(null) : fetchMyRequest(tripId, userId),
+    trip.seat_layout ? fetchTripSeats(tripId) : Promise.resolve([]),
   ]);
   const owes = myRequest !== null && (myRequest.status === 'approved' || myRequest.late_cancel);
   const inCar = isDriver || myRequest?.status === 'approved';
@@ -100,7 +107,7 @@ async function loadTripPage(tripId: string, userId: string): Promise<Loaded> {
     inCar ? fetchMyReviewsForTrip(tripId, userId) : Promise.resolve([]),
     owes ? fetchTripSplit(tripId) : Promise.resolve([]),
   ]);
-  return { trip, riders, requests, myRequest, handles, reliability, ratings, contacts, reviewedCount: myReviews.length, split, loadedAt };
+  return { trip, riders, requests, myRequest, handles, reliability, ratings, contacts, reviewedCount: myReviews.length, split, holds, loadedAt };
 }
 
 export default function TripDetailScreen() {
@@ -122,7 +129,7 @@ export default function TripDetailScreen() {
           setData(result);
           setError('');
         })
-        .catch((err: Error) => setError(err.message)),
+        .catch((err: Error) => setError(friendlyError(err))),
     [id, userId],
   );
 
@@ -145,7 +152,7 @@ export default function TripDetailScreen() {
       await reload();
     } catch (err) {
       errorHaptic();
-      setActionError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setActionError(friendlyError(err, 'Something went wrong. Please try again.'));
     } finally {
       setBusy(null);
     }
@@ -161,23 +168,27 @@ export default function TripDetailScreen() {
   if (error && !data) {
     return (
       <Screen edges={['bottom']}>
-        <ErrorText>{error}</ErrorText>
+        <LoadError message={error} onRetry={reload} />
       </Screen>
     );
   }
   if (data === undefined) {
     return (
       <Screen edges={['bottom']}>
-        <ActivityIndicator color={colors.primary} size="large" style={{ marginTop: Spacing.xl }} />
+        <SkeletonList count={2} />
       </Screen>
     );
   }
-  const { trip, riders, requests, myRequest, handles, reliability, ratings, contacts, reviewedCount, split, loadedAt } = data;
+  const { trip, riders, requests, myRequest, handles, reliability, ratings, contacts, reviewedCount, split, holds, loadedAt } = data;
   if (!trip) {
     return (
       <Screen edges={['bottom']}>
-        <Heading>Trip not found</Heading>
-        <Body muted>It may have been removed.</Body>
+        <EmptyState
+          icon="car-outline"
+          title="Trip not found"
+          message="The driver may have removed it."
+          action={{ title: 'Back to rides', icon: 'search', onPress: () => router.navigate('/') }}
+        />
       </Screen>
     );
   }
@@ -194,6 +205,7 @@ export default function TripDetailScreen() {
   const pendingRequests = requests.filter((request) => request.status === 'pending');
   const blocker = requestBlocker(trip, userId, myRequest, loadedAt);
   const myRequestOpen = myRequest?.status === 'pending' || myRequest?.status === 'approved';
+  const canPickSeat = !isMyTrip && !blocker && !myRequestOpen;
   const departed = departure.getTime() <= loadedAt.getTime(); // payments open once the trip leaves
   const approvedRequests = requests.filter((request) => request.status === 'approved');
   // Everyone who owes a share: approved riders plus late cancellers.
@@ -229,6 +241,8 @@ export default function TripDetailScreen() {
           {trip.origin_name} → {trip.dest_name}
         </Heading>
         {trip.status === 'cancelled' && <ErrorText>This trip was cancelled by the driver.</ErrorText>}
+        {trip.is_sample && <Badge label="Sample trip" tone="neutral" />}
+        {trip.is_practice && <Badge label="Practice ride: you're approved instantly" tone="waiting" />}
         <IconRow icon="time-outline" text={`Leaves ${formatDeparture(departure)} (${formatFlex(trip.flex_minutes)})`} />
         {arrival && <IconRow icon="airplane-outline" text={`At the terminal around ${formatDeparture(arrival)}`} />}
         <IconRow icon="location-outline" text={`Pickup: ${trip.pickup_spot}`} />
@@ -269,6 +283,7 @@ export default function TripDetailScreen() {
               tone={myRequest.late_cancel ? 'bad' : statusTone(myRequest.status)}
             />
           </View>
+          {myRequest.seat && <IconRow icon="grid-outline" text={`Your seat: ${seatLabel(myRequest.seat)}`} />}
           {myRequest.dropoff_name && <IconRow icon="flag-outline" text={`Getting off at ${myRequest.dropoff_name}`} />}
           {myRequestOpen && !departed && (
             <Body muted>
@@ -543,7 +558,20 @@ export default function TripDetailScreen() {
       </Card>
 
       <Card>
-        <Label>Riders</Label>
+        <Label>{trip.seat_layout ? 'Seats' : 'Riders'}</Label>
+        {trip.seat_layout && (
+          <SeatMap
+            layout={trip.seat_layout}
+            openSeats={trip.open_seats ?? []}
+            holds={holds}
+            driver={{ name: trip.driver.full_name, avatarUrl: trip.driver.avatar_url }}
+            // Like picking a seat on a plane: tap an open seat to request it.
+            mode={canPickSeat ? 'pick' : 'view'}
+            onPick={(seat) =>
+              router.push({ pathname: '/request-seat/[id]', params: { id: trip.id, seat, ...(along && stop ? stopToParams(stop) : {}) } })
+            }
+          />
+        )}
         {riders.length === 0 ? (
           <Body muted>No riders booked yet.</Body>
         ) : (
@@ -665,6 +693,7 @@ function RequestCard({
         </PressableScale>
       </View>
       <VibeMeters profile={request.rider} />
+      {request.seat && <IconRow icon="grid-outline" text={`Wants the ${seatLabel(request.seat).toLowerCase()} seat`} />}
       <IconRow
         icon="flag-outline"
         text={request.dropoff_name ? `Getting off at ${request.dropoff_name} (${request.rider_miles} mi)` : 'Riding the whole way'}

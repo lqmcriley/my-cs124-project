@@ -10,11 +10,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
 import { PressableScale } from '@/components/motion';
+import { EmptyState, LoadError } from '@/components/states';
 import { Body, ErrorText, Text } from '@/components/ui';
 import { FontFamily, Radius, Spacing, TapTarget } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchTripRiders } from '@/lib/booking-api';
 import { fetchMessages, MESSAGE_MAX_LENGTH, sendMessage, subscribeToMessages } from '@/lib/chat-api';
+import { friendlyError } from '@/lib/errors';
 import { errorHaptic, tapHaptic } from '@/lib/haptics';
 import { firstName, formatTime } from '@/lib/format';
 import { fetchTrip } from '@/lib/trips-api';
@@ -50,6 +52,7 @@ export default function ChatScreen() {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0); // bumped by "Try again"
 
   // Load who's in the trip and the message history.
   useEffect(() => {
@@ -61,12 +64,12 @@ export default function ChatScreen() {
         setMessages(history);
       })
       .catch((err: Error) => {
-        if (!stale) setError(err.message);
+        if (!stale) setError(friendlyError(err));
       });
     return () => {
       stale = true;
     };
-  }, [id, userId]);
+  }, [id, userId, attempt]);
 
   // Listen for new messages while this screen is open.
   useEffect(() => subscribeToMessages(id, (message) => setMessages((list) => addMessage(list ?? [], message))), [id]);
@@ -83,7 +86,7 @@ export default function ChatScreen() {
       setDraft('');
     } catch (err) {
       errorHaptic();
-      setError(err instanceof Error ? err.message : "Couldn't send. Try again.");
+      setError(friendlyError(err, "Couldn't send. Try again."));
     } finally {
       setSending(false);
     }
@@ -98,13 +101,22 @@ export default function ChatScreen() {
         {loading ? (
           <ActivityIndicator color={colors.primary} size="large" style={{ marginTop: Spacing.xl }} />
         ) : !info ? (
-          <View style={styles.center}>
-            <ErrorText>{error}</ErrorText>
+          <View style={styles.padded}>
+            <LoadError
+              message={error}
+              onRetry={() => {
+                setError('');
+                setAttempt((count) => count + 1);
+              }}
+            />
           </View>
         ) : !info.isMember ? (
-          <View style={styles.center}>
-            <Ionicons name="lock-closed-outline" size={32} color={colors.textSecondary} />
-            <Body muted style={{ textAlign: 'center' }}>The group chat opens once the driver approves your request.</Body>
+          <View style={styles.padded}>
+            <EmptyState
+              icon="lock-closed-outline"
+              title="Chat opens after approval"
+              message="Once the driver approves your request, you can chat with everyone in the car here."
+            />
           </View>
         ) : (
           <>
@@ -181,12 +193,8 @@ function Bubble({ message, mine, member }: { message: Message; mine: boolean; me
 }
 
 const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    padding: Spacing.lg,
+  padded: {
+    padding: Spacing.md,
   },
   list: {
     padding: Spacing.md,

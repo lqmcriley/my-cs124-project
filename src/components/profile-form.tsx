@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
+import { SeatMap } from '@/components/seat-map';
 import { CarIllustration } from '@/components/car-illustration';
 import { PressableScale } from '@/components/motion';
 import { VibeSliders } from '@/components/vibes';
@@ -13,8 +14,10 @@ import { Body, Button, Card, Chip, ErrorText, Label, Text, TextField } from '@/c
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { BIO_MAX_LENGTH, CAR_BODY_TYPES, CLASS_YEARS } from '@/lib/config';
+import { friendlyError } from '@/lib/errors';
 import { PickedPhoto, saveProfile } from '@/lib/profile-api';
 import { initialFormValues, ProfileFormErrors, ProfileFormValues, validateProfileForm } from '@/lib/profile-form';
+import { layoutSeats, SEAT_LAYOUTS } from '@/lib/seats';
 import { useAuth } from '@/providers/auth-provider';
 
 export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onSaved?: () => void }) {
@@ -61,7 +64,7 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
       await refreshProfile();
       onSaved?.();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+      const message = friendlyError(error, 'Something went wrong. Please try again.');
       setSaveError(message);
     } finally {
       setSaving(false);
@@ -168,30 +171,24 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
                 />
               </View>
             </View>
-            <View style={styles.twoColumns}>
-              <View style={styles.column}>
-                <TextField
-                  label="MPG"
-                  placeholder="32"
-                  value={values.mpg}
-                  onChangeText={(t) => set('mpg', t)}
-                  keyboardType="decimal-pad"
-                  error={errors.mpg}
-                />
-              </View>
-              <View style={styles.column}>
-                <TextField
-                  label="Passenger seats"
-                  placeholder="3"
-                  value={values.seats}
-                  onChangeText={(t) => set('seats', t)}
-                  keyboardType="number-pad"
-                  maxLength={1}
-                  error={errors.seats}
-                />
-              </View>
+            <TextField
+              label="MPG"
+              placeholder="32"
+              value={values.mpg}
+              onChangeText={(t) => set('mpg', t)}
+              keyboardType="decimal-pad"
+              error={errors.mpg}
+            />
+            <Body muted>MPG is used to work out a fair gas split.</Body>
+
+            <Label>Seats (counting you)</Label>
+            <View style={styles.chips}>
+              {SEAT_LAYOUTS.map((option) => (
+                <Chip key={option.value} label={option.label} selected={values.seatLayout === option.value} onPress={() => set('seatLayout', option.value)} />
+              ))}
             </View>
-            <Body muted>MPG is used to work out a fair gas split. Seats don&apos;t count you, the driver.</Body>
+            <Body muted>{SEAT_LAYOUTS.find((option) => option.value === values.seatLayout)?.hint}</Body>
+            <SeatMap layout={values.seatLayout} openSeats={layoutSeats(values.seatLayout).map((seat) => seat.id)} mode="view" />
 
             <Label>Body style</Label>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bodyTypes}>
@@ -309,6 +306,11 @@ const styles = StyleSheet.create({
   },
   column: {
     flex: 1,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
   },
   bodyTypes: {
     gap: Spacing.sm,

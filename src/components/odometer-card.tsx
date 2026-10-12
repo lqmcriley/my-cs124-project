@@ -10,6 +10,7 @@ import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { Body, Button, Card, ErrorText, Label, Text } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { friendlyError } from '@/lib/errors';
 import { successHaptic } from '@/lib/haptics';
 import { fetchOdometerPhotos, OdometerKind, OdometerPhotos, uploadOdometerPhoto } from '@/lib/odometer-api';
 
@@ -48,7 +49,7 @@ export function OdometerCard({ tripId, isDriver }: { tripId: string; isDriver: b
       successHaptic();
       setPhotos(await fetchOdometerPhotos(tripId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
+      setError(friendlyError(err, 'Upload failed. Please try again.'));
     } finally {
       setUploading(null);
     }

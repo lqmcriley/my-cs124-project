@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { Text } from '@/components/ui';
+import { Badge, Text } from '@/components/ui';
 import { Avatar } from '@/components/avatar';
 import { FadeSwap, PressableScale } from '@/components/motion';
 import { Radius, Spacing } from '@/constants/theme';
@@ -72,6 +72,8 @@ export function TripCard({ trip, reliability, rating, along, stop }: Props) {
             {driverName}
             {formatRating(rating) ? ` · ${formatRating(rating)}` : ''} · <Text style={{ color: trustColor, fontWeight: '600' }}>{trust.label}</Text>
           </Text>
+          {trip.is_sample && <Badge label="Sample" tone="neutral" />}
+          {trip.is_practice && <Badge label="Practice: try booking here" tone="waiting" />}
         </View>
         <View style={styles.priceBox}>
           <FadeSwap value={partPrice ?? ifYouJoin.perSeat}>

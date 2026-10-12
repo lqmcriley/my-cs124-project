@@ -19,7 +19,6 @@ export const BIO_MAX_LENGTH = 200;
 // Car limits (also enforced in the database)
 export const MIN_MPG = 5;
 export const MAX_MPG = 150;
-export const MAX_PASSENGER_SEATS = 7;
 
 // Drivers can set a gas price within this range (also enforced in the database).
 export const MIN_GAS_PRICE = 1;

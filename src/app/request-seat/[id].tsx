@@ -3,7 +3,7 @@
 
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { CarIllustration } from '@/components/car-illustration';
 import { PlaceSearchField } from '@/components/place-search-field';
@@ -13,13 +13,14 @@ import { EmptyState } from '@/components/states';
 import { Body, Button, Card, Checkbox, ErrorText, Heading, IconRow, Label, Screen, SegmentedControl, Text, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { showAlert } from '@/lib/alert';
 import { terminalArrival } from '@/lib/airport';
 import { fetchTripSeats, requestSeat } from '@/lib/booking-api';
 import { riderEstimate } from '@/lib/booking';
 import type { Place } from '@/lib/config';
 import { friendlyError } from '@/lib/errors';
 import { carName, fuelTag } from '@/lib/fuel';
-import { firstName, formatDeparture, formatMoney } from '@/lib/format';
+import { formatDeparture, formatMoney, shortName } from '@/lib/format';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { computeRoute } from '@/lib/maps';
 import { longTripLabel, ROOM_RULE } from '@/lib/long-trip';
@@ -169,7 +170,7 @@ function RequestForm({
       });
       successHaptic();
       if (trip.is_practice) {
-        Alert.alert("You're in!", 'Practice rides are approved right away. On a real trip, the driver approves you first. Open the trip to see your seat and the group chat.');
+        showAlert("You're in!", 'Practice rides are approved right away. On a real trip, the driver approves you first. Open the trip to see your seat and the group chat.');
       }
       router.back();
     } catch (err) {
@@ -261,7 +262,7 @@ function RequestForm({
         <Card>
           <Label>Parking + shuttle plan</Label>
           <Body>
-            {firstName(trip.driver.full_name)} is parking at {trip.parking_location}. Everyone takes the shuttle from there,
+            {shortName(trip.driver)} is parking at {trip.parking_location}. Everyone takes the shuttle from there,
             about {trip.shuttle_minutes} min to the terminal.
           </Body>
           <Checkbox label="I understand and I'm OK with this plan" checked={parkingOk} onChange={setParkingOk} />
@@ -269,7 +270,7 @@ function RequestForm({
       )}
 
       <TextField
-        label={`Note for ${firstName(trip.driver.full_name)} (optional)`}
+        label={`Note for ${shortName(trip.driver)} (optional)`}
         placeholder="e.g. I have one carry-on. My flight is at 10:15."
         value={message}
         onChangeText={setMessage}

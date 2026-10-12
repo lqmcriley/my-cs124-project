@@ -104,9 +104,9 @@ function SeatTile({
   let faded = false;
 
   if (selected) {
-    background = colors.primary;
-    border = colors.primary;
-    foreground = colors.onPrimary;
+    background = colors.selected;
+    border = colors.selected;
+    foreground = colors.onSelected;
     icon = 'checkmark';
     label = 'Yours';
   } else if (state === 'open') {
@@ -127,9 +127,9 @@ function SeatTile({
     icon = 'time-outline';
     label = hold?.firstName ?? 'Held';
   } else if (state === 'mine') {
-    background = colors.primary;
-    border = colors.primary;
-    foreground = colors.onPrimary;
+    background = colors.selected;
+    border = colors.selected;
+    foreground = colors.onSelected;
     label = 'You';
   } else if (state === 'taken') {
     label = hold?.firstName ?? 'Taken';

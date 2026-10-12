@@ -8,7 +8,7 @@ import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { PressableScale } from '@/components/motion';
-import { Body, ErrorText, Label, Text } from '@/components/ui';
+import { Body, ErrorText, KEYBOARD_DONE_ID, Label, Text } from '@/components/ui';
 import { FontFamily, Radius, Spacing, TapTarget } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Place } from '@/lib/config';
@@ -121,6 +121,7 @@ export function PlaceSearchField({ label, value, onChange, placeholder, error, c
           ]}>
           <Ionicons name="search" size={19} color={focused ? colors.primary : colors.textSecondary} />
           <TextInput
+            inputAccessoryViewID={KEYBOARD_DONE_ID}
             value={query}
             onChangeText={(text) => {
               setQuery(text);

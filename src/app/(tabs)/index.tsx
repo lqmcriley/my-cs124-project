@@ -16,7 +16,8 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Place, QUICK_PICKS, QuickPick } from '@/lib/config';
 import { friendlyError } from '@/lib/errors';
-import { firstName } from '@/lib/format';
+import { shortName } from '@/lib/format';
+import { greeting } from '@/lib/greeting';
 import { Direction, searchByDirection } from '@/lib/trip-search';
 import { Reliability } from '@/lib/reliability';
 import { fetchReliability } from '@/lib/reliability-api';
@@ -30,6 +31,8 @@ import { useAuth } from '@/providers/auth-provider';
 export default function HomeScreen() {
   const colors = useTheme();
   const { profile } = useAuth();
+  // Picked once when the screen opens, so it doesn't change while you scroll.
+  const [hello] = useState(() => greeting(shortName(profile)));
   // Leaving campus: search where you're going. Back to campus: search where you're coming from.
   const [direction, setDirection] = useState<Direction>('leaving');
   const [place, setPlace] = useState<Place | QuickPick | null>(null);
@@ -87,7 +90,7 @@ export default function HomeScreen() {
 
   return (
     <Screen edges={['top']} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
-      <Heading>Hey {firstName(profile?.full_name ?? '') || 'there'}</Heading>
+      <Heading>{hello}</Heading>
 
       <SegmentedControl
         options={[

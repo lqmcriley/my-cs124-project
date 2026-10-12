@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { KeyboardDoneBar } from '@/components/ui';
 import { Colors, FontFamily } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
@@ -57,6 +58,7 @@ function RootNavigator() {
         },
       }}>
       <StatusBar style="auto" />
+      <KeyboardDoneBar />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -80,6 +82,12 @@ function RootNavigator() {
           <Stack.Screen name="review/[id]" options={{ headerShown: true, title: 'Rate your trip', presentation: 'modal' }} />
           <Stack.Screen name="report/[id]" options={{ headerShown: true, title: 'Report', presentation: 'modal' }} />
           <Stack.Screen name="blocked" options={{ headerShown: true, title: 'Blocked people', headerBackTitle: 'Profile' }} />
+          {/* Profile sections: each slides in from the side (swipe back to return). */}
+          <Stack.Screen name="me/vibes" options={{ headerShown: true, title: 'Vibe check', headerBackTitle: 'Profile' }} />
+          <Stack.Screen name="me/car" options={{ headerShown: true, title: 'My car', headerBackTitle: 'Profile' }} />
+          <Stack.Screen name="me/payment" options={{ headerShown: true, title: 'Payment', headerBackTitle: 'Profile' }} />
+          <Stack.Screen name="me/reviews" options={{ headerShown: true, title: 'Reviews', headerBackTitle: 'Profile' }} />
+          <Stack.Screen name="me/reliability" options={{ headerShown: true, title: 'Reliability', headerBackTitle: 'Profile' }} />
           {/* Slides in from the side (swipe back to return), like Blocked people. */}
           <Stack.Screen name="edit-profile" options={{ headerShown: true, title: 'Edit profile', headerBackTitle: 'Profile' }} />
           {/* A sheet that springs up and sizes itself to its content; drag down to close. */}

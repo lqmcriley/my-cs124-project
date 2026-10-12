@@ -10,7 +10,7 @@ import { Avatar } from '@/components/avatar';
 import { Body, Button, Heading } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { firstName } from '@/lib/format';
+import { shortName } from '@/lib/format';
 import { successHaptic } from '@/lib/haptics';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -18,11 +18,11 @@ export default function SignOutSheet() {
   const colors = useTheme();
   const { profile, signOut } = useAuth();
   const [busy, setBusy] = useState(false);
-  const name = firstName(profile?.full_name ?? '');
+  const name = shortName(profile);
 
   return (
     <View style={[styles.sheet, { backgroundColor: colors.background }]}>
-      <Animated.View entering={ZoomIn.springify().damping(12).stiffness(180)}>
+      <Animated.View entering={ZoomIn.springify().damping(20).stiffness(220)}>
         <Avatar uri={profile?.avatar_url} name={profile?.full_name ?? '?'} size={84} />
       </Animated.View>
       <Animated.View entering={FadeInDown.delay(80).duration(220)} style={styles.text}>

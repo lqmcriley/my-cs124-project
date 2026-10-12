@@ -5,6 +5,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { ReactElement, ReactNode, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  InputAccessoryView,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   RefreshControlProps,
@@ -157,6 +159,8 @@ export function TextField({ label, hint, error, style, onFocus, onBlur, ...input
       <TextInput
         placeholderTextColor={colors.textSecondary}
         accessibilityLabel={label}
+        returnKeyType={inputProps.multiline ? 'default' : 'done'}
+        inputAccessoryViewID={KEYBOARD_DONE_ID}
         {...inputProps}
         onFocus={(event) => {
           setFocused(true);
@@ -184,6 +188,30 @@ export function TextField({ label, hint, error, style, onFocus, onBlur, ...input
   );
 }
 
+// A bar on top of the iPhone keyboard with a Done button that closes it.
+// Text fields point at it with inputAccessoryViewID={KEYBOARD_DONE_ID}.
+// Rendered once, in the root layout. (Android keyboards have their own hide key.)
+export const KEYBOARD_DONE_ID = 'keyboard-done';
+
+export function KeyboardDoneBar() {
+  const colors = useTheme();
+  if (Platform.OS !== 'ios') return null;
+  return (
+    <InputAccessoryView nativeID={KEYBOARD_DONE_ID}>
+      <View style={[styles.doneBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <PressableScale
+          onPress={() => Keyboard.dismiss()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Done, close the keyboard"
+          style={[styles.doneButton, { backgroundColor: colors.selected }]}>
+          <Text style={[styles.doneText, { color: colors.onSelected }]}>Done</Text>
+        </PressableScale>
+      </View>
+    </InputAccessoryView>
+  );
+}
+
 // A rounded, tappable option. Use a row of these to pick one choice.
 export function Chip({
   label,
@@ -197,7 +225,7 @@ export function Chip({
   icon?: keyof typeof Ionicons.glyphMap;
 }) {
   const colors = useTheme();
-  const textColor = selected ? colors.onPrimary : colors.text;
+  const textColor = selected ? colors.onSelected : colors.text;
   return (
     <PressableScale
       onPress={onPress}
@@ -207,8 +235,8 @@ export function Chip({
       style={[
         styles.chip,
         {
-          backgroundColor: selected ? colors.primary : colors.card,
-          borderColor: selected ? colors.primary : colors.border,
+          backgroundColor: selected ? colors.selected : colors.card,
+          borderColor: selected ? colors.selected : colors.border,
         },
       ]}>
       {icon && <Ionicons name={icon} size={18} color={textColor} />}
@@ -239,6 +267,22 @@ export function Card({ children, style }: { children: ReactNode; style?: StylePr
 }
 
 const styles = StyleSheet.create({
+  doneBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  doneButton: {
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 7,
+  },
+  doneText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
   chipRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -460,12 +504,12 @@ export function SegmentedControl<T extends string | number>({
         {width > 0 && (
           <Animated.View
             pointerEvents="none"
-            style={[styles.segmentBubble, { width: segmentWidth, backgroundColor: colors.primary }, bubble]}
+            style={[styles.segmentBubble, { width: segmentWidth, backgroundColor: colors.selected }, bubble]}
           />
         )}
         {options.map((option) => {
           const selected = option.value === value;
-          const textColor = selected ? colors.onPrimary : colors.text;
+          const textColor = selected ? colors.onSelected : colors.text;
           return (
             <PressableScale
               key={String(option.value)}

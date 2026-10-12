@@ -5,11 +5,12 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Body, Button, Card, ErrorText, Label, Text } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { showAlert } from '@/lib/alert';
 import { friendlyError } from '@/lib/errors';
 import { successHaptic } from '@/lib/haptics';
 import { fetchOdometerPhotos, OdometerKind, OdometerPhotos, uploadOdometerPhoto } from '@/lib/odometer-api';
@@ -56,7 +57,7 @@ export function OdometerCard({ tripId, isDriver }: { tripId: string; isDriver: b
   }
 
   function choose(kind: OdometerKind) {
-    Alert.alert(kind === 'start' ? 'Start odometer photo' : 'End odometer photo', undefined, [
+    showAlert(kind === 'start' ? 'Start odometer photo' : 'End odometer photo', undefined, [
       { text: 'Take photo', onPress: () => pick(kind, 'camera') },
       { text: 'Choose from photos', onPress: () => pick(kind, 'library') },
       { text: 'Cancel', style: 'cancel' },

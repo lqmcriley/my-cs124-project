@@ -17,3 +17,11 @@ export function formatPhone(stored: string): string {
   const match = stored.match(/^\+1(\d{3})(\d{3})(\d{4})$/);
   return match ? `(${match[1]}) ${match[2]}-${match[3]}` : stored;
 }
+
+// True once a full US number has been typed: 10 digits, or 11 starting with 1.
+// (Numbers typed with "+" for another country are never "complete", since their length varies.)
+export function isCompleteUsPhone(raw: string): boolean {
+  if (raw.trim().startsWith('+')) return false;
+  const digits = raw.replace(/\D/g, '');
+  return (digits.length === 10 && !digits.startsWith('1')) || (digits.length === 11 && digits.startsWith('1'));
+}

@@ -11,7 +11,11 @@ export type ChatPreference = 'quiet' | 'talk';
 
 export type Profile = {
   id: string;
-  full_name: string;
+  full_name: string; // first + last, kept in sync by the database
+  first_name?: string | null;
+  last_name?: string | null;
+  nickname?: string | null; // optional, e.g. "Quinn"
+  short_name?: string | null; // nickname or first name (set by the database)
   avatar_url: string | null;
   year: ClassYear | null;
   major: string | null;
@@ -92,7 +96,7 @@ export type Trip = {
 
 // A trip plus the driver's public profile and car, as loaded for cards and the detail screen.
 export type TripWithDriver = Trip & {
-  driver: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'year' | 'major' | 'bio' | 'chat_preference' | VibeKey>;
+  driver: Pick<Profile, 'id' | 'full_name' | 'short_name' | 'nickname' | 'avatar_url' | 'year' | 'major' | 'bio' | 'chat_preference' | VibeKey>;
   car: Pick<Car, 'make' | 'model' | 'color' | 'plate' | 'seats' | 'body_type'> | null;
 };
 
@@ -120,7 +124,7 @@ export type TripRequest = {
 
 // A request plus the rider's public profile (what the driver sees).
 export type RequestWithRider = TripRequest & {
-  rider: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'year' | 'major' | 'chat_preference' | VibeKey>;
+  rider: Pick<Profile, 'id' | 'full_name' | 'short_name' | 'nickname' | 'avatar_url' | 'year' | 'major' | 'chat_preference' | VibeKey>;
 };
 
 // A request plus its trip (what the rider sees in My trips).

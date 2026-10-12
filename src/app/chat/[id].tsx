@@ -18,7 +18,7 @@ import { fetchTripRiders } from '@/lib/booking-api';
 import { fetchMessages, MESSAGE_MAX_LENGTH, sendMessage, subscribeToMessages } from '@/lib/chat-api';
 import { friendlyError } from '@/lib/errors';
 import { errorHaptic, tapHaptic } from '@/lib/haptics';
-import { firstName, formatTime } from '@/lib/format';
+import { formatTime, shortName } from '@/lib/format';
 import { fetchTrip } from '@/lib/trips-api';
 import type { Message } from '@/lib/types';
 import { useAuth } from '@/providers/auth-provider';
@@ -30,7 +30,7 @@ async function loadChatInfo(tripId: string, userId: string): Promise<ChatInfo> {
   const [trip, riders] = await Promise.all([fetchTrip(tripId), fetchTripRiders(tripId)]);
   if (!trip) throw new Error('Trip not found.');
   const members: Record<string, Member> = {
-    [trip.driver_id]: { name: `${firstName(trip.driver.full_name)} (driver)`, avatarUrl: trip.driver.avatar_url },
+    [trip.driver_id]: { name: `${shortName(trip.driver)} (driver)`, avatarUrl: trip.driver.avatar_url },
   };
   for (const rider of riders) members[rider.rider_id] = { name: rider.first_name, avatarUrl: rider.avatar_url };
   return { title: `${trip.dest_name} chat`, members, isMember: userId in members };

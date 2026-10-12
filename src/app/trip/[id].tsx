@@ -6,7 +6,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Linking, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { AnimatedItem, PressableScale } from '@/components/motion';
@@ -25,6 +25,7 @@ import { RouteMap } from '@/components/route-map';
 import { Badge, Body, Button, Card, ErrorText, Heading, IconRow, Label, Screen, Text } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { showAlert } from '@/lib/alert';
 import { terminalArrival } from '@/lib/airport';
 import {
   isUpcoming,
@@ -55,7 +56,7 @@ import {
 import { LUGGAGE_OPTIONS } from '@/lib/config';
 import { friendlyError } from '@/lib/errors';
 import { carName, fuelTag } from '@/lib/fuel';
-import { firstName, formatDeparture, formatDuration, formatFlex, formatMoney } from '@/lib/format';
+import { formatDeparture, formatDuration, formatFlex, formatMoney, shortName } from '@/lib/format';
 import { decodePolyline } from '@/lib/geo';
 import { estimatedArrival, longTripLabel, ROOM_RULE } from '@/lib/long-trip';
 import { errorHaptic, successHaptic, tapHaptic } from '@/lib/haptics';
@@ -162,7 +163,7 @@ export default function TripDetailScreen() {
   }
 
   function confirm(title: string, message: string, confirmLabel: string, onConfirm: () => void) {
-    Alert.alert(title, message, [
+    showAlert(title, message, [
       { text: 'Keep it', style: 'cancel' },
       { text: confirmLabel, style: 'destructive', onPress: onConfirm },
     ]);
@@ -214,7 +215,7 @@ export default function TripDetailScreen() {
   // Everyone who owes a share: approved riders plus late cancellers.
   const payingRequests = requests.filter((request) => request.status === 'approved' || request.late_cancel);
   const iOwe = myRequest !== null && (myRequest.status === 'approved' || myRequest.late_cancel);
-  const driverName = firstName(trip.driver.full_name);
+  const driverName = shortName(trip.driver);
   const moved = movedAfterApproval(trip, myRequest); // driver moved the trip a lot: you can drop out free
   const lateNow = isWithin24Hours(trip, loadedAt) && !moved;
   const direction = tripDirection(trip);
@@ -452,7 +453,7 @@ export default function TripDetailScreen() {
               </View>
               {request.status === 'approved' && canReport && (
                 <Button
-                  title={request.no_show ? 'Undo no-show' : `${firstName(request.rider.full_name)} didn't show up`}
+                  title={request.no_show ? 'Undo no-show' : `${shortName(request.rider)} didn't show up`}
                   variant="ghost"
                   loading={busy === `noshow-${request.id}`}
                   disabled={busy !== null}
@@ -460,7 +461,7 @@ export default function TripDetailScreen() {
                     request.no_show
                       ? run(`noshow-${request.id}`, () => setNoShow(request.id, false))
                       : confirm(
-                          `Mark ${firstName(request.rider.full_name)} as a no-show?`,
+                          `Mark ${shortName(request.rider)} as a no-show?`,
                           'This counts against their reliability. They still owe their share, since they held a seat.',
                           'Mark no-show',
                           () => run(`noshow-${request.id}`, () => setNoShow(request.id, true)),
@@ -483,7 +484,7 @@ export default function TripDetailScreen() {
               request={request}
               reliability={reliability[request.rider_id]}
               rating={ratings[request.rider_id]}
-              onMore={() => showPersonActions({ userId, personId: request.rider_id, name: firstName(request.rider.full_name), tripId: trip.id, onBlocked: reload })}
+              onMore={() => showPersonActions({ userId, personId: request.rider_id, name: shortName(request.rider), tripId: trip.id, onBlocked: reload })}
               trip={trip}
               busy={busy}
               onApprove={() => run(`approve-${request.id}`, () => respondToRequest(request.id, true))}
@@ -513,7 +514,7 @@ export default function TripDetailScreen() {
             <Label>Heads up: parking + shuttle</Label>
           </View>
           <Body>
-            {firstName(trip.driver.full_name)} is parking at {trip.parking_location}. Everyone takes the shuttle from there,
+            {shortName(trip.driver)} is parking at {trip.parking_location}. Everyone takes the shuttle from there,
             about {trip.shuttle_minutes} min to the terminal. That time is already included above.
           </Body>
         </View>
@@ -549,6 +550,7 @@ export default function TripDetailScreen() {
           <Avatar uri={trip.driver.avatar_url} name={trip.driver.full_name} size={56} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.name, { color: colors.text }]}>{trip.driver.full_name}</Text>
+            {trip.driver.nickname ? <Body muted style={{ fontSize: 14 }}>Goes by {trip.driver.nickname}</Body> : null}
             {details ? <Body muted>{details}</Body> : null}
             <View style={styles.badges}>
               {formatRating(ratings[trip.driver_id]) && <Badge label={formatRating(ratings[trip.driver_id])!} tone="waiting" />}
@@ -657,7 +659,7 @@ export default function TripDetailScreen() {
           </Body>
         ) : (
           <Button
-            title={along && stop ? `Request a seat to ${stop.name}` : `Request a seat with ${firstName(trip.driver.full_name)}`}
+            title={along && stop ? `Request a seat to ${stop.name}` : `Request a seat with ${shortName(trip.driver)}`}
             onPress={() =>
               router.push(
                 along && stop

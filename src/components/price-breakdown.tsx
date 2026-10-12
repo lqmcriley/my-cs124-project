@@ -52,12 +52,12 @@ export function PriceBreakdown({ miles, mpg, gasPrice, fuel, seatsOffered, rider
             return (
               <View
                 key={row.riders}
-                style={[styles.tableRow, current && { backgroundColor: colors.primary }]}
+                style={[styles.tableRow, current && { backgroundColor: colors.selected }]}
                 accessibilityLabel={`${row.riders} riders: ${formatMoney(row.perSeat)} each`}>
-                <Text style={[styles.cell, { color: current ? colors.onPrimary : colors.text }]}>
+                <Text style={[styles.cell, { color: current ? colors.onSelected : colors.text }]}>
                   {row.riders} {row.riders === 1 ? 'rider' : 'riders'}
                 </Text>
-                <Text style={[styles.cell, styles.amount, { color: current ? colors.onPrimary : colors.text }]}>
+                <Text style={[styles.cell, styles.amount, { color: current ? colors.onSelected : colors.text }]}>
                   {formatMoney(row.perSeat)} each
                 </Text>
               </View>

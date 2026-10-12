@@ -9,7 +9,7 @@ import { Avatar } from '@/components/avatar';
 import { FadeSwap, PressableScale } from '@/components/motion';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { firstName, formatDeparture, formatMoney, formatTime } from '@/lib/format';
+import { formatDeparture, formatMoney, formatTime, shortName } from '@/lib/format';
 import { terminalArrival } from '@/lib/airport';
 import { fuelTag, isElectric } from '@/lib/fuel';
 import { longTripLabel } from '@/lib/long-trip';
@@ -48,7 +48,7 @@ export function TripCard({ trip, reliability, rating, along, stop }: Props) {
     trip.is_airport && trip.route_minutes
       ? terminalArrival({ departure: new Date(trip.departure_at), driveMinutes: trip.route_minutes, shuttleMinutes: trip.shuttle_minutes })
       : null;
-  const driverName = firstName(trip.driver.full_name);
+  const driverName = shortName(trip.driver);
 
   return (
     <PressableScale

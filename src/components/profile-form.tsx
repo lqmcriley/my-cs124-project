@@ -3,7 +3,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Keyboard, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { SeatMap } from '@/components/seat-map';
@@ -15,8 +15,9 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { BIO_MAX_LENGTH, CAR_BODY_TYPES, CLASS_YEARS } from '@/lib/config';
 import { friendlyError } from '@/lib/errors';
+import { formatPhone, isCompleteUsPhone, normalizePhone } from '@/lib/phone';
 import { energy, FUELS, isElectric } from '@/lib/fuel';
-import { PickedPhoto, saveProfile } from '@/lib/profile-api';
+import { PickedPhoto, saveProfile, shrinkPhoto } from '@/lib/profile-api';
 import { initialFormValues, ProfileFormErrors, ProfileFormValues, validateProfileForm } from '@/lib/profile-form';
 import { layoutSeats, SEAT_LAYOUTS } from '@/lib/seats';
 import { useAuth } from '@/providers/auth-provider';
@@ -41,11 +42,16 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.6,
+      quality: 1, // it gets shrunk and compressed right after, below
     });
-    if (!result.canceled) {
-      const asset = result.assets[0];
-      setPhoto({ uri: asset.uri, mimeType: asset.mimeType ?? 'image/jpeg' });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    // Show it right away, then swap in a small copy so Save uploads ~50 KB, not several MB.
+    setPhoto({ uri: asset.uri, mimeType: asset.mimeType ?? 'image/jpeg' });
+    try {
+      setPhoto(await shrinkPhoto(asset.uri));
+    } catch {
+      // If shrinking fails, the full photo still works (just uploads slower).
     }
   }
 
@@ -78,21 +84,47 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
     <View style={styles.form}>
       {/* Photo */}
       <PressableScale onPress={pickPhoto} style={styles.photoRow} accessibilityRole="button" accessibilityLabel="Choose a profile photo">
-        <Avatar uri={photoUri} name={values.fullName} size={104} />
+        <Avatar uri={photoUri} name={`${values.firstName} ${values.lastName}`} size={104} />
         <View style={[styles.photoPill, { backgroundColor: colors.track }]}>
           <Ionicons name="camera-outline" size={17} color={colors.text} />
           <Text style={{ color: colors.text, fontWeight: '600', fontSize: 15 }}>{photoUri ? 'Change photo' : 'Add a photo'}</Text>
         </View>
       </PressableScale>
 
+      <View style={styles.twoColumns}>
+        <View style={styles.column}>
+          <TextField
+            label="First name"
+            placeholder="Louis"
+            value={values.firstName}
+            onChangeText={(text) => set('firstName', text)}
+            autoComplete="given-name"
+            textContentType="givenName"
+            error={errors.firstName}
+          />
+        </View>
+        <View style={styles.column}>
+          <TextField
+            label="Last name"
+            placeholder="Quinn"
+            value={values.lastName}
+            onChangeText={(text) => set('lastName', text)}
+            autoComplete="family-name"
+            textContentType="familyName"
+            error={errors.lastName}
+          />
+        </View>
+      </View>
       <TextField
-        label="Name"
-        placeholder="First and last name"
-        value={values.fullName}
-        onChangeText={(text) => set('fullName', text)}
-        autoComplete="name"
-        textContentType="name"
-        error={errors.fullName}
+        label="Nickname (optional)"
+        placeholder="What people call you"
+        hint="If you go by another name, people see it instead of your first name."
+        value={values.nickname}
+        onChangeText={(text) => set('nickname', text)}
+        autoComplete="nickname"
+        textContentType="nickname"
+        maxLength={30}
+        error={errors.nickname}
       />
 
       <Label>Year (optional)</Label>
@@ -154,7 +186,10 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
                   label="Year"
                   placeholder="2019"
                   value={values.modelYear}
-                  onChangeText={(t) => set('modelYear', t)}
+                  onChangeText={(t) => {
+                    set('modelYear', t);
+                    if (/^\d{4}$/.test(t)) Keyboard.dismiss(); // all 4 digits typed
+                  }}
                   keyboardType="number-pad"
                   maxLength={4}
                   error={errors.modelYear}
@@ -225,11 +260,11 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
                     accessibilityLabel={option.label}
                     style={[
                       styles.bodyTile,
-                      { borderColor: selected ? colors.primary : colors.border, backgroundColor: colors.card },
+                      { borderColor: selected ? colors.selected : colors.border, backgroundColor: colors.card },
                       selected && { borderWidth: 2 },
                     ]}>
                     <CarIllustration color={values.color} bodyType={option.value} width={104} animate={false} />
-                    <Text style={{ color: selected ? colors.primary : colors.text, fontSize: 13, fontWeight: '600' }}>{option.label}</Text>
+                    <Text style={{ color: colors.text, fontSize: 13, fontWeight: selected ? '700' : '600' }}>{option.label}</Text>
                   </PressableScale>
                 );
               })}
@@ -246,7 +281,15 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
           label="Phone"
           placeholder="(217) 555-0123"
           value={values.phone}
-          onChangeText={(t) => set('phone', t)}
+          onChangeText={(t) => {
+            // A full number: tidy it to (217) 555-0123 and close the keyboard.
+            if (isCompleteUsPhone(t)) {
+              set('phone', formatPhone(normalizePhone(t)!));
+              Keyboard.dismiss();
+            } else {
+              set('phone', t);
+            }
+          }}
           keyboardType="phone-pad"
           textContentType="telephoneNumber"
           autoComplete="tel"

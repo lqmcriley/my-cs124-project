@@ -26,13 +26,13 @@ export async function fetchMyReviewsForTrip(tripId: string, userId: string): Pro
   return data as Review[];
 }
 
-export type ReviewWithReviewer = Review & { reviewer: { full_name: string; avatar_url: string | null } };
+export type ReviewWithReviewer = Review & { reviewer: { full_name: string; short_name?: string | null; avatar_url: string | null } };
 
 // The latest reviews about someone, with the reviewer's name and photo.
 export async function fetchRecentReviews(userId: string, limit = 5): Promise<ReviewWithReviewer[]> {
   const { data, error } = await supabase
     .from('reviews')
-    .select('*, reviewer:profiles!reviews_reviewer_id_fkey (full_name, avatar_url)')
+    .select('*, reviewer:profiles!reviews_reviewer_id_fkey (full_name, short_name, avatar_url)')
     .eq('reviewee_id', userId)
     .order('created_at', { ascending: false })
     .limit(limit);

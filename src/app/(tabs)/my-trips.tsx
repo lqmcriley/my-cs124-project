@@ -15,7 +15,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { REQUEST_STATUS_TEXT, splitMyTrips } from '@/lib/booking';
 import { fetchMyTrips, MyTrips } from '@/lib/booking-api';
 import { friendlyError } from '@/lib/errors';
-import { firstName, formatDeparture } from '@/lib/format';
+import { formatDeparture, shortName } from '@/lib/format';
 import type { RequestStatus, TripWithDriver } from '@/lib/types';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -130,7 +130,7 @@ export default function MyTripsScreen() {
             <AnimatedItem key={`${view}-${request.id}`} index={index}>
             <TripRow
               trip={request.trip}
-              subtitle={`with ${firstName(request.trip.driver.full_name)}`}
+              subtitle={`with ${shortName(request.trip.driver)}`}
               showDriver
               badge={
                 request.trip.status === 'cancelled'

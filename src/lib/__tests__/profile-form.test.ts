@@ -1,6 +1,6 @@
 import { initialFormValues, toCarRow, toContactRow, toProfileRow, validateProfileForm } from '../profile-form';
 
-const rider = { ...initialFormValues(null, null), fullName: 'Alma Mater' };
+const rider = { ...initialFormValues(null, null), firstName: 'Alma', lastName: 'Mater' };
 const driver = {
   ...rider,
   isDriver: true,
@@ -18,8 +18,10 @@ describe('validateProfileForm', () => {
     expect(validateProfileForm(rider)).toEqual({});
   });
 
-  it('requires a name', () => {
-    expect(validateProfileForm({ ...rider, fullName: '   ' }).fullName).toBeDefined();
+  it('requires a first and last name, but not a nickname', () => {
+    expect(validateProfileForm({ ...rider, firstName: '   ' }).firstName).toBeDefined();
+    expect(validateProfileForm({ ...rider, lastName: '' }).lastName).toBeDefined();
+    expect(validateProfileForm({ ...rider, nickname: '' })).toEqual({});
   });
 
   it('rejects a bio that is too long', () => {
@@ -54,11 +56,28 @@ describe('validateProfileForm', () => {
 
 });
 
+describe('names', () => {
+  it('saves a nickname', () => {
+    expect(toProfileRow('u', { ...rider, firstName: 'Louis', lastName: 'Quinn', nickname: ' Quinn ' })).toMatchObject({
+      full_name: 'Louis Quinn',
+      nickname: 'Quinn',
+    });
+  });
+
+  it('splits older full names when editing', () => {
+    const values = initialFormValues({ id: 'u', full_name: 'Mary Ann Smith', avatar_url: null, year: null, major: null, bio: null, chat_preference: 'talk' }, null);
+    expect(values).toMatchObject({ firstName: 'Mary', lastName: 'Ann Smith', nickname: '' });
+  });
+});
+
 describe('database rows', () => {
   it('turns blank optional fields into null', () => {
-    expect(toProfileRow('user-1', { ...rider, fullName: ' Alma Mater ', major: '  ' })).toEqual({
+    expect(toProfileRow('user-1', { ...rider, firstName: ' Alma ', major: '  ' })).toEqual({
       id: 'user-1',
       full_name: 'Alma Mater',
+      first_name: 'Alma',
+      last_name: 'Mater',
+      nickname: null,
       year: null,
       major: null,
       bio: null,
@@ -92,7 +111,7 @@ describe('database rows', () => {
       { id: 'u', full_name: 'A B', avatar_url: null, year: 'Junior', major: 'CS', bio: null, chat_preference: 'quiet' },
       { id: 'c', owner_id: 'u', make: 'Kia', model: 'Soul', color: 'Red', plate: 'X1', mpg: 30, seats: 4 },
     );
-    expect(values).toMatchObject({ fullName: 'A B', year: 'Junior', vibes: { vibe_chat: 0, vibe_music: 2, vibe_temp: 2, vibe_windows: 2, vibe_stops: 2 }, isDriver: true, mpg: '30', seatLayout: '5' });
+    expect(values).toMatchObject({ firstName: 'A', lastName: 'B', year: 'Junior', vibes: { vibe_chat: 0, vibe_music: 2, vibe_temp: 2, vibe_windows: 2, vibe_stops: 2 }, isDriver: true, mpg: '30', seatLayout: '5' });
   });
 
   it('seats always match the seat layout', () => {
@@ -103,14 +122,14 @@ describe('database rows', () => {
 
 describe('vibes', () => {
   it('keeps the old quiet/talk setting in sync with the chat slider', () => {
-    const quiet = toProfileRow('u', { ...initialFormValues(null, null), fullName: 'A', vibes: { vibe_chat: 1, vibe_music: 4, vibe_temp: 0, vibe_windows: 3, vibe_stops: 2 } });
+    const quiet = toProfileRow('u', { ...initialFormValues(null, null), firstName: 'A', lastName: 'B', vibes: { vibe_chat: 1, vibe_music: 4, vibe_temp: 0, vibe_windows: 3, vibe_stops: 2 } });
     expect(quiet).toMatchObject({ chat_preference: 'quiet', vibe_chat: 1, vibe_music: 4, vibe_temp: 0 });
   });
 });
 
 describe('phone number', () => {
   it('is optional, checked, and saved in standard form', () => {
-    const base = { ...initialFormValues(null, null), fullName: 'A' };
+    const base = { ...initialFormValues(null, null), firstName: 'A', lastName: 'B' };
     expect(validateProfileForm({ ...base, phone: '' })).toEqual({});
     expect(validateProfileForm({ ...base, phone: 'call me' }).phone).toBeDefined();
     expect(toContactRow('u', { ...base, phone: '(217) 555-0123' })).toEqual({ user_id: 'u', phone: '+12175550123' });

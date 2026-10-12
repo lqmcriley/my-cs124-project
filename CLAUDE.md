@@ -43,7 +43,8 @@ src/
     request-seat/[id].tsx   Request a seat (rider; drop-off, note, parking OK)
     (tabs)/my-trips.tsx     My trips: needs-your-answer, upcoming/past, driving/riding
     chat/[id].tsx           Trip group chat (driver + approved riders, live via Realtime)
-    (tabs)/profile.tsx      Your profile, car, sign out
+    (tabs)/profile.tsx      Your profile as a menu; sections open me/* pages
+    me/*.tsx                Profile sections: vibes, car, payment, reviews, reliability
   components/
     ui.tsx                  Screen, Heading, Body, Label, Button, TextField, Chip, Card, ErrorText
     profile-form.tsx        Profile + car form
@@ -84,7 +85,10 @@ scripts/test-db.sh          Runs all migrations + database tests on a throwaway 
 - Reliability (owner's choice): cancelling an approved seat <24h before departure = late cancel; the seat reopens but the rider still owes (`payingRiders()` = approved + late cancellers), so others' price never rises. Drivers cancelling <24h with riders = late cancel. No-shows reportable for 7 days after departure. Totals via the `reliability()` SQL function; labels in `lib/reliability.ts`.
 - A car MPG change updates that driver's upcoming trips only while nobody is booked (trigger `cars_sync_trip_mpg`).
 - Direction (owner's choice): trips are "leaving campus" (start within 6 mi of campus) or "back to campus" (end there); `tripDirection()` / `searchByDirection()` in `lib/trip-search.ts`. Find a ride and Post a trip have a Leaving / Back to campus switch; back-to-campus trips show `ReturnTripNote` (delays happen, keep a backup). Rider flight delays: normal rules (driver waits within the flexible window). Driver moves a booked trip by more than the window: `previous_departure_at`/`departure_moved_at` are recorded by trigger, riders see a banner and can leave free (`cancel_request` skips the late cancel; `movedAfterApproval()` in `lib/booking.ts`).
-- Profile actions are `ActionRow`s in an `ActionGroup` (`components/action-row.tsx`): icon pops and tilts on press. Edit profile slides in (push, not a modal); Sign out is a native sheet (`sign-out.tsx`, `presentation: 'formSheet'`, fit to content) instead of an alert.
+- Profile is a Settings-style menu (owner's choice): header (photo, name, "Goes by", year/major, bio, badges), then `MenuGroup`/`MenuRow` lists (`components/menu.tsx`, no icons, value on the right) opening `app/me/*` pages (vibes, car, payment, reviews, reliability), then Edit profile / Blocked people, then a plain red "Sign out" that opens the sign-out sheet. Edit profile slides in (push, not a modal); Sign out is a native sheet (`sign-out.tsx`, `presentation: 'formSheet'`, fit to content) instead of an alert.
+- Names (owner's choice): profiles have `first_name`, `last_name`, optional `nickname`; `full_name` is kept in sync (trigger) and `short_name` (generated) = nickname or first name. Show one name with `shortName()` in `lib/format.ts` (never `firstName(full_name)`); SQL functions return `short_name`. Full names show "Goes by Quinn" under them.
+- Find a ride greets you by time of day, picked at random (`lib/greeting.ts`): "Morning, Riley", "Hey, Riley", "Up late, Riley?".
+- Every text field shows a Done bar above the iPhone keyboard (`KeyboardDoneBar` in `ui.tsx`, mounted once in the root layout; inputs use `inputAccessoryViewID={KEYBOARD_DONE_ID}`). Single-line fields also get a "done" return key.
 - Option bubbles go in a single swipeable row (`ChipRow` in `ui.tsx`), never wrapping. Segmented switches have a draggable bubble (needs `GestureHandlerRootView` in the root layout).
 - UI conventions (owner's choices): pill-shaped buttons that shrink-and-spring on press (`PressableScale` in `components/motion.tsx`); full-width `SegmentedControl` for 2–7 short options (chips only for long lists); pill search bar in `place-search-field.tsx`; tab bar never minimizes; Post/Edit trip use fold-out sections (`components/fold-section.tsx`, `trip-details-fields.tsx`); an illustrated car in the car's color and body style: sedan, hatchback, SUV, pickup, minivan, coupe (`components/car-illustration.tsx`, `lib/car-color.ts`), never a real photo.
 - Vibe check: five 0–4 sliders on profiles (`lib/vibes.ts`, `components/vibes.tsx`): chat, music, temperature, windows, stops. `chat_preference` is kept in sync from the chat slider.
@@ -103,7 +107,7 @@ scripts/test-db.sh          Runs all migrations + database tests on a throwaway 
 - Every table has RLS enabled with policies. Users write only their own rows. Never use the secret/service-role key in the app.
 - Price per share = (miles ÷ MPG × gas price) ÷ people in the car (driver included). Partial riders pay in proportion to their miles. Cap: rider miles × IRS rate ÷ people. Constants come from `lib/config.ts`. Put the pricing math in a pure `lib/pricing.ts` with unit tests.
 - Secrets go in `.env` (gitignored). Only `EXPO_PUBLIC_*` vars reach the app.
-- Colors: orange `#FF6B35` primary, navy `#13294B` text and headers, navy text on orange buttons (for contrast). Always support dark mode via `useTheme()`. Tap targets are ≥ 44pt.
+- Colors (owner's choice): official Illini Orange `#FF5F05` for actions (buttons), Illini Blue `#13294B` for text and for selections (`colors.selected`: chips, switch bubbles, your seat, price-table row). White background in light mode; all Illini Blue in dark mode, where selections turn white. Navy text on orange buttons (for contrast). Always support dark mode via `useTheme()`. Tap targets are ≥ 44pt.
 
 ## How to run
 

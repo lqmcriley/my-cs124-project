@@ -11,6 +11,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { firstName, formatDeparture, formatMoney, formatTime } from '@/lib/format';
 import { terminalArrival } from '@/lib/airport';
+import { longTripLabel } from '@/lib/long-trip';
 import { payingRiders, riderEstimate } from '@/lib/booking';
 import type { Place } from '@/lib/config';
 import { AlongMatch, stopToParams } from '@/lib/trip-search';
@@ -96,6 +97,9 @@ export function TripCard({ trip, reliability, rating, along, stop }: Props) {
         <Detail icon="time-outline" text={formatDeparture(new Date(trip.departure_at))} />
         {arrival && <Detail icon="airplane-outline" text={`At terminal ~${formatTime(arrival)}`} />}
         {trip.parking === 'offsite' && <Detail icon="bus-outline" text="Park + shuttle to terminal" />}
+        {longTripLabel(trip.long_trip_plan ?? null, trip.overnight_stop ?? null) && (
+          <Detail icon="moon-outline" text={longTripLabel(trip.long_trip_plan ?? null, trip.overnight_stop ?? null)!} />
+        )}
         <Detail icon="people-outline" text={`${seatsLeft} ${seatsLeft === 1 ? 'seat' : 'seats'} left`} />
         <Detail icon="location-outline" text={`Pickup: ${trip.pickup_spot}`} />
       </View>

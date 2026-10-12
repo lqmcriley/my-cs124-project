@@ -60,8 +60,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest",
-    "test:db": "./scripts/test-db.sh",
-    "deploy:web": "npx vercel build --prod && npx vercel deploy --prebuilt --prod"
+    "test:db": "./scripts/test-db.sh"
   },
   "private": true,
   "jest": {

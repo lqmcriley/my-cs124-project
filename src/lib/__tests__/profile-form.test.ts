@@ -82,11 +82,7 @@ describe('database rows', () => {
       major: null,
       bio: null,
       chat_preference: 'talk',
-      vibe_chat: 2,
-      vibe_music: 2,
-      vibe_temp: 2,
-      vibe_windows: 2,
-      vibe_stops: 2,
+      ride_tags: [],
     });
   });
 
@@ -111,7 +107,7 @@ describe('database rows', () => {
       { id: 'u', full_name: 'A B', avatar_url: null, year: 'Junior', major: 'CS', bio: null, chat_preference: 'quiet' },
       { id: 'c', owner_id: 'u', make: 'Kia', model: 'Soul', color: 'Red', plate: 'X1', mpg: 30, seats: 4 },
     );
-    expect(values).toMatchObject({ firstName: 'A', lastName: 'B', year: 'Junior', vibes: { vibe_chat: 0, vibe_music: 2, vibe_temp: 2, vibe_windows: 2, vibe_stops: 2 }, isDriver: true, mpg: '30', seatLayout: '5' });
+    expect(values).toMatchObject({ firstName: 'A', lastName: 'B', year: 'Junior', rideTags: [], isDriver: true, mpg: '30', seatLayout: '5' });
   });
 
   it('seats always match the seat layout', () => {
@@ -120,10 +116,12 @@ describe('database rows', () => {
   });
 });
 
-describe('vibes', () => {
-  it('keeps the old quiet/talk setting in sync with the chat slider', () => {
-    const quiet = toProfileRow('u', { ...initialFormValues(null, null), firstName: 'A', lastName: 'B', vibes: { vibe_chat: 1, vibe_music: 4, vibe_temp: 0, vibe_windows: 3, vibe_stops: 2 } });
-    expect(quiet).toMatchObject({ chat_preference: 'quiet', vibe_chat: 1, vibe_music: 4, vibe_temp: 0 });
+describe('ride style', () => {
+  it('saves tags and keeps the old quiet/talk setting in step', () => {
+    const quiet = toProfileRow('u', { ...initialFormValues(null, null), firstName: 'A', lastName: 'B', rideTags: ['quiet', 'snacks'] });
+    expect(quiet).toMatchObject({ ride_tags: ['quiet', 'snacks'], chat_preference: 'quiet' });
+    const chatty = toProfileRow('u', { ...initialFormValues(null, null), firstName: 'A', lastName: 'B', rideTags: ['chatty'] });
+    expect(chatty).toMatchObject({ chat_preference: 'talk' });
   });
 });
 

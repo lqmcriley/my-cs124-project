@@ -2,10 +2,10 @@
 // Android shows its own pop-up calendar, then a clock for the time.
 
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { Icon } from '@/components/icon';
 import { Button, ErrorText, Label, Text } from '@/components/ui';
 import { Radius, Spacing, TapTarget } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -77,7 +77,7 @@ export function DateTimeField({ label, value, onChange, mode, placeholder, minim
             styles.field,
             { backgroundColor: colors.inputBackground, borderColor: error ? colors.danger : colors.border },
           ]}>
-          <Ionicons name="calendar" size={20} color={colors.primary} />
+          <Icon name="calendar" size={20} color={colors.primary} />
           <Text style={{ color: value ? colors.text : colors.textSecondary, fontSize: 16 }}>{text}</Text>
         </Pressable>
         {clearable && value && (
@@ -89,7 +89,7 @@ export function DateTimeField({ label, value, onChange, mode, placeholder, minim
             accessibilityRole="button"
             accessibilityLabel={`Clear ${label}`}
             hitSlop={12}>
-            <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
+            <Icon name="close-circle" size={28} color={colors.textSecondary} />
           </Pressable>
         )}
       </View>
@@ -125,6 +125,7 @@ const styles = StyleSheet.create({
     minHeight: TapTarget,
     borderWidth: 1,
     borderRadius: Radius.md,
+    borderCurve: 'continuous',
     paddingHorizontal: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
@@ -133,6 +134,7 @@ const styles = StyleSheet.create({
   iosPicker: {
     borderWidth: 1,
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     padding: Spacing.sm,
     gap: Spacing.sm,
   },

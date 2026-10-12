@@ -3,9 +3,9 @@
 //   mode="pick"   riders tap one open seat
 //   mode="view"   just shows who sits where
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, View } from 'react-native';
 
+import { Icon, type IconName } from '@/components/icon';
 import { Avatar } from '@/components/avatar';
 import { PressableScale } from '@/components/motion';
 import { Text } from '@/components/ui';
@@ -70,7 +70,7 @@ function DriverTile({ driver }: { driver?: { name: string; avatarUrl: string | n
   const colors = useTheme();
   return (
     <View style={[styles.tile, { backgroundColor: colors.track, borderColor: colors.track }]} accessibilityLabel="Driver's seat">
-      {driver ? <Avatar uri={driver.avatarUrl} name={driver.name} size={30} /> : <Ionicons name="disc-outline" size={24} color={colors.textSecondary} />}
+      {driver ? <Avatar uri={driver.avatarUrl} name={driver.name} size={30} /> : <Icon name="disc-outline" size={24} color={colors.textSecondary} />}
       <Text style={[styles.tileLabel, { color: colors.textSecondary }]}>Driver</Text>
     </View>
   );
@@ -99,7 +99,7 @@ function SeatTile({
   let background: string = colors.card;
   let border: string = colors.border;
   let foreground: string = colors.text;
-  let icon: keyof typeof Ionicons.glyphMap | null = null;
+  let icon: IconName | null = null;
   let label = '';
   let faded = false;
 
@@ -150,7 +150,7 @@ function SeatTile({
       {showAvatar ? (
         <Avatar uri={hold.avatarUrl} name={hold.firstName ?? '?'} size={30} />
       ) : (
-        icon && <Ionicons name={icon} size={22} color={foreground} />
+        icon && <Icon name={icon} size={22} color={foreground} />
       )}
       <Text style={[styles.tileLabel, { color: foreground }]} numberOfLines={1}>
         {label}
@@ -197,6 +197,7 @@ const styles = StyleSheet.create({
     width: '70%',
     height: 10,
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
     marginBottom: Spacing.xs,
   },
   row: {
@@ -207,6 +208,7 @@ const styles = StyleSheet.create({
     width: TILE,
     height: TILE + 8,
     borderRadius: 16,
+    borderCurve: 'continuous',
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -222,6 +224,7 @@ const styles = StyleSheet.create({
     top: -8,
     borderWidth: 1,
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
     paddingHorizontal: 6,
   },
   crampedText: {

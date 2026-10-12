@@ -60,6 +60,7 @@ export function RouteMap({ from, to, route, height = 220 }: Props) {
 const styles = StyleSheet.create({
   wrapper: {
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     borderWidth: 1,
     overflow: 'hidden',
   },

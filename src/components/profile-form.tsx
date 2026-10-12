@@ -2,14 +2,14 @@
 
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { Keyboard, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
+import { Icon } from '@/components/icon';
 import { Avatar } from '@/components/avatar';
 import { SeatMap } from '@/components/seat-map';
 import { CarIllustration } from '@/components/car-illustration';
 import { PressableScale } from '@/components/motion';
-import { VibeSliders } from '@/components/vibes';
+import { RideTagPicker } from '@/components/ride-tags';
 import { Body, Button, Card, Chip, ChipRow, ErrorText, Label, Text, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -86,7 +86,7 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
       <PressableScale onPress={pickPhoto} style={styles.photoRow} accessibilityRole="button" accessibilityLabel="Choose a profile photo">
         <Avatar uri={photoUri} name={`${values.firstName} ${values.lastName}`} size={104} />
         <View style={[styles.photoPill, { backgroundColor: colors.track }]}>
-          <Ionicons name="camera-outline" size={17} color={colors.text} />
+          <Icon name="camera-outline" size={17} color={colors.text} />
           <Text style={{ color: colors.text, fontWeight: '600', fontSize: 15 }}>{photoUri ? 'Change photo' : 'Add a photo'}</Text>
         </View>
       </PressableScale>
@@ -157,11 +157,8 @@ export function ProfileForm({ submitLabel, onSaved }: { submitLabel: string; onS
         error={errors.bio}
       />
 
-      <Label>Vibe check</Label>
-      <Body muted style={{ fontSize: 14 }}>Slide to show how you like a ride. Riders and drivers see this so you can find your match.</Body>
-      <Card>
-        <VibeSliders vibes={values.vibes} onChange={(vibes) => set('vibes', vibes)} />
-      </Card>
+      <Label>Ride style</Label>
+      <RideTagPicker tags={values.rideTags} onChange={(tags) => set('rideTags', tags)} />
 
       {/* Car */}
       <Card>
@@ -375,6 +372,7 @@ const styles = StyleSheet.create({
     gap: 2,
     borderWidth: 1,
     borderRadius: 14,
+    borderCurve: 'continuous',
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.sm,
   },

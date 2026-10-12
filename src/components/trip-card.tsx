@@ -1,9 +1,9 @@
 // One trip in the search results. Tapping it opens the trip detail screen.
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
+import { Icon, type IconName } from '@/components/icon';
 import { Badge, Text } from '@/components/ui';
 import { Avatar } from '@/components/avatar';
 import { FadeSwap, PressableScale } from '@/components/motion';
@@ -89,7 +89,7 @@ export function TripCard({ trip, reliability, rating, along, stop }: Props) {
 
       {along && stop && (
         <View style={[styles.alongBanner, { backgroundColor: colors.track }]}>
-          <Ionicons name="git-branch-outline" size={16} color={colors.primary} />
+          <Icon name="git-branch-outline" size={16} color={colors.primary} />
           <Text style={[styles.meta, { color: colors.text, flex: 1 }]}>
             Passes {Math.max(1, Math.round(along.distanceMiles))} mi from {stop.name} · you&apos;d ride about {Math.round(along.riderMiles)} mi
           </Text>
@@ -111,11 +111,11 @@ export function TripCard({ trip, reliability, rating, along, stop }: Props) {
   );
 }
 
-function Detail({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
+function Detail({ icon, text }: { icon: IconName; text: string }) {
   const colors = useTheme();
   return (
     <View style={styles.detail}>
-      <Ionicons name={icon} size={16} color={colors.textSecondary} />
+      <Icon name={icon} size={16} color={colors.textSecondary} />
       <Text style={[styles.meta, { color: colors.text }]} numberOfLines={1}>
         {text}
       </Text>
@@ -126,6 +126,7 @@ function Detail({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: st
 const styles = StyleSheet.create({
   card: {
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     borderWidth: 1,
     padding: Spacing.md,
     gap: Spacing.sm,
@@ -157,6 +158,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.xs,
     borderRadius: Radius.md,
+    borderCurve: 'continuous',
     paddingHorizontal: Spacing.sm,
     paddingVertical: 6,
   },

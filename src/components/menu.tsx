@@ -3,11 +3,11 @@
 // "2019 Honda Civic") and an arrow. Pressing a row dims it, nudges the arrow
 // forward and gives a soft tap. Motion is skipped when Reduce Motion is on.
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { Children, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { interpolate, interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 
+import { Icon } from '@/components/icon';
 import { Text } from '@/components/ui';
 import { Radius, Spacing, TapTarget } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -53,7 +53,7 @@ export function MenuRow({ title, value, onPress }: RowProps) {
         <View style={{ flex: 1 }} />
       )}
       <Animated.View style={arrowStyle}>
-        <Ionicons name="chevron-forward" size={17} color={colors.textSecondary} />
+        <Icon name="chevron-forward" size={17} color={colors.textSecondary} />
       </Animated.View>
     </AnimatedPressable>
   );
@@ -78,6 +78,7 @@ export function MenuGroup({ children }: { children: ReactNode }) {
 const styles = StyleSheet.create({
   group: {
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     borderWidth: 1,
     overflow: 'hidden',
   },

@@ -4,7 +4,7 @@
 import { CarBodyType, CLASS_YEARS } from './config';
 import type { Fuel } from './fuel';
 import type { SeatLayout } from './seats';
-import type { VibeKey } from './vibes';
+import type { RideTag } from './ride-tags';
 
 export type ClassYear = (typeof CLASS_YEARS)[number];
 export type ChatPreference = 'quiet' | 'talk';
@@ -21,7 +21,8 @@ export type Profile = {
   major: string | null;
   bio: string | null;
   chat_preference: ChatPreference;
-} & Partial<Record<VibeKey, number>>; // vibe check sliders (0–4)
+  ride_tags?: RideTag[]; // ride style, up to 4
+};
 
 export type Car = {
   id: string;
@@ -96,7 +97,7 @@ export type Trip = {
 
 // A trip plus the driver's public profile and car, as loaded for cards and the detail screen.
 export type TripWithDriver = Trip & {
-  driver: Pick<Profile, 'id' | 'full_name' | 'short_name' | 'nickname' | 'avatar_url' | 'year' | 'major' | 'bio' | 'chat_preference' | VibeKey>;
+  driver: Pick<Profile, 'id' | 'full_name' | 'short_name' | 'nickname' | 'avatar_url' | 'year' | 'major' | 'bio' | 'chat_preference' | 'ride_tags'>;
   car: Pick<Car, 'make' | 'model' | 'color' | 'plate' | 'seats' | 'body_type'> | null;
 };
 
@@ -124,7 +125,7 @@ export type TripRequest = {
 
 // A request plus the rider's public profile (what the driver sees).
 export type RequestWithRider = TripRequest & {
-  rider: Pick<Profile, 'id' | 'full_name' | 'short_name' | 'nickname' | 'avatar_url' | 'year' | 'major' | 'chat_preference' | VibeKey>;
+  rider: Pick<Profile, 'id' | 'full_name' | 'short_name' | 'nickname' | 'avatar_url' | 'year' | 'major' | 'chat_preference' | 'ride_tags'>;
 };
 
 // A request plus its trip (what the rider sees in My trips).

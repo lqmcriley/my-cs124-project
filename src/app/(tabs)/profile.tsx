@@ -1,5 +1,5 @@
 // Your profile, as a menu: who you are at the top, then rows that open each
-// section on its own page (vibes, car, payment, reviews, reliability).
+// section on its own page (ride style, car, payment, reviews, reliability, theme).
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -10,19 +10,21 @@ import { MenuGroup, MenuRow } from '@/components/menu';
 import { PressableScale } from '@/components/motion';
 import { ReliabilityBadge } from '@/components/reliability-badge';
 import { Badge, Body, Heading, Screen, Text } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { Spacing, Themes } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { tapHaptic } from '@/lib/haptics';
 import { Reliability, reliabilitySummary } from '@/lib/reliability';
 import { fetchReliability } from '@/lib/reliability-api';
 import { formatRating, RatingSummary } from '@/lib/reviews';
 import { fetchRatingSummary } from '@/lib/reviews-api';
-import { VIBES, vibeLabel, vibesFrom } from '@/lib/vibes';
+import { rideTagLabels } from '@/lib/ride-tags';
 import { useAuth } from '@/providers/auth-provider';
+import { useThemeChoice } from '@/providers/theme-provider';
 
 export default function ProfileScreen() {
   const colors = useTheme();
   const { session, profile, car, payment } = useAuth();
+  const { themeId } = useThemeChoice();
   const [reliability, setReliability] = useState<Reliability | undefined>(undefined);
   const [rating, setRating] = useState<RatingSummary | undefined>(undefined);
   const userId = session?.user.id;
@@ -39,7 +41,6 @@ export default function ProfileScreen() {
   if (!profile) return null;
 
   const details = [profile.year, profile.major].filter(Boolean).join(' · ');
-  const chat = VIBES[0];
   const handles = payment
     ? [payment.venmo_username && 'Venmo', payment.cashapp_cashtag && 'Cash App', payment.paypal_username && 'PayPal'].filter(Boolean).join(', ')
     : '';
@@ -63,7 +64,7 @@ export default function ProfileScreen() {
       </View>
 
       <MenuGroup>
-        <MenuRow title="Vibe check" value={vibeLabel(chat, vibesFrom(profile)[chat.key])} onPress={() => router.push('/me/vibes')} />
+        <MenuRow title="Ride style" value={rideTagLabels(profile.ride_tags).join(', ') || 'Not set'} onPress={() => router.push('/me/ride-style')} />
         <MenuRow
           title="My car"
           value={car ? [car.model_year, car.make, car.model].filter(Boolean).join(' ') : 'Add a car'}
@@ -75,6 +76,7 @@ export default function ProfileScreen() {
       </MenuGroup>
 
       <MenuGroup>
+        <MenuRow title="Theme" value={Themes[themeId].name} onPress={() => router.push('/me/theme')} />
         <MenuRow title="Edit profile" onPress={() => router.push('/edit-profile')} />
         <MenuRow title="Blocked people" onPress={() => router.push('/blocked')} />
       </MenuGroup>

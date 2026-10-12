@@ -1,11 +1,11 @@
 // Screen 8: My trips. Upcoming and past, as driver and as rider, plus
 // requests waiting for your answer. Tap any trip to open it.
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
 
+import { Icon } from '@/components/icon';
 import { Avatar } from '@/components/avatar';
 import { AnimatedItem, PressableScale } from '@/components/motion';
 import { EmptyState, LoadError, SkeletonList } from '@/components/states';
@@ -68,7 +68,7 @@ export default function MyTripsScreen() {
               onPress={() => router.push(`/trip/${trip.id}`)}
               accessibilityRole="button"
               style={[styles.alert, { backgroundColor: colors.card, borderColor: colors.primary }]}>
-              <Ionicons name="person-add-outline" size={22} color={colors.primary} />
+              <Icon name="person-add-outline" size={22} color={colors.primary} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.title, { color: colors.text }]}>
                   {trip.pendingCount} {trip.pendingCount === 1 ? 'person wants' : 'people want'} to join
@@ -77,7 +77,7 @@ export default function MyTripsScreen() {
                   {trip.dest_name} · {formatDeparture(new Date(trip.departure_at))}
                 </Body>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
             </PressableScale>
             </AnimatedItem>
           ))}
@@ -179,7 +179,7 @@ function TripRow({
         </Body>
         {badge && <Badge label={badge.label} tone={badge.tone} />}
       </View>
-      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+      <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
     </PressableScale>
   );
 }
@@ -195,6 +195,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     borderWidth: 2,
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     padding: Spacing.md,
   },
   row: {
@@ -203,6 +204,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     borderWidth: 1,
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     padding: Spacing.md,
   },
   title: {

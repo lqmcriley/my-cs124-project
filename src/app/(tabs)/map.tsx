@@ -1,7 +1,6 @@
 // Map tab: every upcoming trip drawn on one big map. Tap a route or pin to see
 // the ride at the bottom, then tap the card to open it.
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect } from 'expo-router';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -9,6 +8,7 @@ import MapView, { Marker, Polyline } from 'react-native-maps';
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Icon } from '@/components/icon';
 import { PressableScale } from '@/components/motion';
 import { TripCard } from '@/components/trip-card';
 import { SegmentedControl, Text } from '@/components/ui';
@@ -166,7 +166,7 @@ export default function MapScreen() {
             accessibilityRole="button"
             accessibilityLabel="Zoom to show every ride"
             style={[styles.pill, styles.iconPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Ionicons name="scan-outline" size={18} color={colors.text} />
+            <Icon name="scan-outline" size={18} color={colors.text} />
           </PressableScale>
         </View>
       </View>
@@ -180,7 +180,7 @@ export default function MapScreen() {
               accessibilityRole="button"
               accessibilityLabel="Close"
               style={[styles.pill, styles.iconPill, styles.close, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Ionicons name="close" size={18} color={colors.text} />
+              <Icon name="close" size={18} color={colors.text} />
             </PressableScale>
             <TripCard trip={selected} reliability={reliability[selected.driver_id]} rating={ratings[selected.driver_id]} />
           </Animated.View>
@@ -205,6 +205,7 @@ const styles = StyleSheet.create({
   },
   glass: {
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
     borderWidth: 1,
     padding: 2,
     shadowColor: '#000',
@@ -218,6 +219,7 @@ const styles = StyleSheet.create({
   },
   pill: {
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
     borderWidth: 1,
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,

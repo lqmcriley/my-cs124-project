@@ -11,9 +11,11 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { KeyboardDoneBar } from '@/components/ui';
-import { Colors, FontFamily } from '@/constants/theme';
+import { FontFamily } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
+import { ThemeChoiceProvider } from '@/providers/theme-provider';
 
 // Keep the splash screen up until we know whether someone is signed in.
 SplashScreen.preventAutoHideAsync();
@@ -22,9 +24,11 @@ export default function RootLayout() {
   return (
     // Needed for drag gestures, like sliding the bubble on a segmented switch.
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
+      <ThemeChoiceProvider>
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
+      </ThemeChoiceProvider>
     </GestureHandlerRootView>
   );
 }
@@ -32,7 +36,7 @@ export default function RootLayout() {
 function RootNavigator() {
   const { session, profile, loading } = useAuth();
   const scheme = useColorScheme();
-  const colors = scheme === 'dark' ? Colors.dark : Colors.light;
+  const colors = useTheme();
   const baseTheme = scheme === 'dark' ? DarkTheme : DefaultTheme;
 
   useEffect(() => {
@@ -83,10 +87,11 @@ function RootNavigator() {
           <Stack.Screen name="report/[id]" options={{ headerShown: true, title: 'Report', presentation: 'modal' }} />
           <Stack.Screen name="blocked" options={{ headerShown: true, title: 'Blocked people', headerBackTitle: 'Profile' }} />
           {/* Profile sections: each slides in from the side (swipe back to return). */}
-          <Stack.Screen name="me/vibes" options={{ headerShown: true, title: 'Vibe check', headerBackTitle: 'Profile' }} />
+          <Stack.Screen name="me/ride-style" options={{ headerShown: true, title: 'Ride style', headerBackTitle: 'Profile' }} />
           <Stack.Screen name="me/car" options={{ headerShown: true, title: 'My car', headerBackTitle: 'Profile' }} />
           <Stack.Screen name="me/payment" options={{ headerShown: true, title: 'Payment', headerBackTitle: 'Profile' }} />
           <Stack.Screen name="me/reviews" options={{ headerShown: true, title: 'Reviews', headerBackTitle: 'Profile' }} />
+          <Stack.Screen name="me/theme" options={{ headerShown: true, title: 'Theme', headerBackTitle: 'Profile' }} />
           <Stack.Screen name="me/reliability" options={{ headerShown: true, title: 'Reliability', headerBackTitle: 'Profile' }} />
           {/* Slides in from the side (swipe back to return), like Blocked people. */}
           <Stack.Screen name="edit-profile" options={{ headerShown: true, title: 'Edit profile', headerBackTitle: 'Profile' }} />

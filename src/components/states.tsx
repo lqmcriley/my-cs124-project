@@ -3,7 +3,6 @@
 //   LoadError     "Couldn't load", with a Try again button
 //   SkeletonList  grey placeholder cards that gently pulse while loading
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
@@ -15,11 +14,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { Icon, type IconName } from '@/components/icon';
 import { Body, Button, Text } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-type IconName = keyof typeof Ionicons.glyphMap;
 
 type Action = { title: string; icon?: IconName; onPress: () => void };
 
@@ -28,7 +27,7 @@ export function EmptyState({ icon, title, message, action }: { icon: IconName; t
   return (
     <Animated.View entering={FadeIn.duration(220)} style={[styles.box, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={[styles.iconCircle, { backgroundColor: colors.track }]}>
-        <Ionicons name={icon} size={28} color={colors.primary} />
+        <Icon name={icon} size={28} color={colors.primary} />
       </View>
       <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
       <Body muted style={styles.message}>
@@ -96,6 +95,7 @@ const styles = StyleSheet.create({
   box: {
     alignItems: 'center',
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     borderWidth: 1,
     paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing.md,
@@ -105,6 +105,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.xs,
@@ -126,6 +127,7 @@ const styles = StyleSheet.create({
   },
   skeleton: {
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     borderWidth: 1,
     padding: Spacing.md,
     gap: Spacing.sm,
@@ -140,5 +142,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    borderCurve: 'continuous',
   },
 });

@@ -121,6 +121,7 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 4 / 3,
     borderRadius: Radius.md,
+    borderCurve: 'continuous',
     borderWidth: 1,
   },
   empty: {

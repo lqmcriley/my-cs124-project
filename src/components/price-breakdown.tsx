@@ -116,6 +116,7 @@ const styles = StyleSheet.create({
   table: {
     borderWidth: 1,
     borderRadius: Radius.md,
+    borderCurve: 'continuous',
     overflow: 'hidden',
   },
   tableRow: {

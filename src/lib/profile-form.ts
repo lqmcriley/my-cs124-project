@@ -6,7 +6,7 @@ import { cleanHandle, handleError, PaymentMethods } from './payments';
 import { formatPhone, normalizePhone } from './phone';
 import { layoutForSeats, passengerCount, SeatLayout } from './seats';
 import type { Car, ClassYear, Profile } from './types';
-import { chatPreferenceFromVibe, Vibes, vibesFrom } from './vibes';
+import type { RideTag } from './ride-tags';
 
 // What the form holds while you're typing. Numbers are strings until we save.
 export type ProfileFormValues = {
@@ -16,7 +16,7 @@ export type ProfileFormValues = {
   year: ClassYear | null;
   major: string;
   bio: string;
-  vibes: Vibes; // vibe check sliders
+  rideTags: RideTag[]; // ride style, up to 4
   isDriver: boolean;
   make: string;
   model: string;
@@ -50,7 +50,7 @@ export function initialFormValues(
     year: profile?.year ?? null,
     major: profile?.major ?? '',
     bio: profile?.bio ?? '',
-    vibes: initialVibes(profile),
+    rideTags: (profile?.ride_tags ?? []) as RideTag[],
     isDriver: car !== null,
     make: car?.make ?? '',
     model: car?.model ?? '',
@@ -66,14 +66,6 @@ export function initialFormValues(
     paypal: payment?.paypal_username ?? '',
     phone: phone ? formatPhone(phone) : '',
   };
-}
-
-// Vibes from the profile. Profiles saved before the sliders existed start their
-// chat slider from the old "Quiet ride / Down to talk" choice.
-function initialVibes(profile: Profile | null): Vibes {
-  const vibes = vibesFrom(profile);
-  if (profile && profile.vibe_chat === undefined) vibes.vibe_chat = profile.chat_preference === 'quiet' ? 0 : 3;
-  return vibes;
 }
 
 // Returns an error message for each field that needs fixing. Empty object = all good.
@@ -125,8 +117,9 @@ export function toProfileRow(userId: string, values: ProfileFormValues) {
     year: values.year,
     major: values.major.trim() || null,
     bio: values.bio.trim() || null,
-    chat_preference: chatPreferenceFromVibe(values.vibes.vibe_chat),
-    ...values.vibes,
+    ride_tags: values.rideTags,
+    // The older quiet/talk setting, kept in step for anything that still reads it.
+    chat_preference: values.rideTags.includes('quiet') ? ('quiet' as const) : ('talk' as const),
   };
 }
 

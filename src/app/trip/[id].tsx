@@ -3,11 +3,11 @@
 //   riders  -> request a seat, see your status, cancel
 //   drivers -> approve/decline requests (screen 6), edit or cancel the trip
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 
+import { Icon } from '@/components/icon';
 import { Avatar } from '@/components/avatar';
 import { AnimatedItem, PressableScale } from '@/components/motion';
 import { PayButtons } from '@/components/pay-buttons';
@@ -20,7 +20,7 @@ import { SafetyCard } from '@/components/safety-card';
 import { SeatMap } from '@/components/seat-map';
 import { EmptyState, LoadError, SkeletonList } from '@/components/states';
 import { ReliabilityBadge } from '@/components/reliability-badge';
-import { VibeMeters } from '@/components/vibes';
+import { RideTags } from '@/components/ride-tags';
 import { RouteMap } from '@/components/route-map';
 import { Badge, Body, Button, Card, ErrorText, Heading, IconRow, Label, Screen, Text } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
@@ -267,7 +267,7 @@ export default function TripDetailScreen() {
       {along && stop && !myRequestOpen && (
         <View style={[styles.headsUp, { borderColor: colors.primary, backgroundColor: colors.card }]}>
           <View style={styles.row}>
-            <Ionicons name="git-branch-outline" size={20} color={colors.primary} />
+            <Icon name="git-branch-outline" size={20} color={colors.primary} />
             <Label>Getting off at {stop.name}?</Label>
           </View>
           <Body>
@@ -499,7 +499,7 @@ export default function TripDetailScreen() {
       {trip.long_trip_plan && trip.route_minutes ? (
         <Card>
           <View style={styles.row}>
-            <Ionicons name="moon-outline" size={20} color={colors.primary} />
+            <Icon name="moon-outline" size={20} color={colors.primary} />
             <Label>{longTripLabel(trip.long_trip_plan, trip.overnight_stop ?? null)}</Label>
           </View>
           <IconRow icon="flag-outline" muted text={`Arrives around ${formatDeparture(estimatedArrival(departure, trip.route_minutes, trip.long_trip_plan))}`} />
@@ -510,7 +510,7 @@ export default function TripDetailScreen() {
       {trip.parking === 'offsite' && (
         <View style={[styles.headsUp, { borderColor: colors.primary, backgroundColor: colors.card }]}>
           <View style={styles.row}>
-            <Ionicons name="bus-outline" size={20} color={colors.primary} />
+            <Icon name="bus-outline" size={20} color={colors.primary} />
             <Label>Heads up: parking + shuttle</Label>
           </View>
           <Body>
@@ -563,13 +563,12 @@ export default function TripDetailScreen() {
               accessibilityRole="button"
               accessibilityLabel={`Report or block ${driverName}`}
               onPress={() => showPersonActions({ userId, personId: trip.driver_id, name: driverName, tripId: trip.id, onBlocked: reload })}>
-              <Ionicons name="ellipsis-horizontal-circle-outline" size={28} color={colors.textSecondary} />
+              <Icon name="ellipsis-horizontal-circle-outline" size={28} color={colors.textSecondary} />
             </PressableScale>
           )}
         </View>
         {trip.driver.bio ? <Body>{trip.driver.bio}</Body> : null}
-        <Label>Vibe check</Label>
-        <VibeMeters profile={trip.driver} />
+        <RideTags tags={trip.driver.ride_tags} />
         {trip.car ? (
           <View style={styles.carRow}>
             <CarIllustration color={trip.car.color} bodyType={trip.car.body_type} width={130} />
@@ -715,10 +714,10 @@ function RequestCard({
           </View>
         </View>
         <PressableScale hitSlop={10} accessibilityRole="button" accessibilityLabel="Report or block" onPress={onMore}>
-          <Ionicons name="ellipsis-horizontal-circle-outline" size={28} color={colors.textSecondary} />
+          <Icon name="ellipsis-horizontal-circle-outline" size={28} color={colors.textSecondary} />
         </PressableScale>
       </View>
-      <VibeMeters profile={request.rider} />
+      <RideTags tags={request.rider.ride_tags} />
       {request.seat && <IconRow icon="grid-outline" text={`Wants the ${seatLabel(request.seat).toLowerCase()} seat`} />}
       <IconRow
         icon="flag-outline"
@@ -763,6 +762,7 @@ const styles = StyleSheet.create({
   headsUp: {
     borderWidth: 2,
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     padding: Spacing.md,
     gap: Spacing.sm,
   },
@@ -787,6 +787,7 @@ const styles = StyleSheet.create({
   stretches: {
     borderWidth: 1,
     borderRadius: Radius.md,
+    borderCurve: 'continuous',
     padding: Spacing.sm,
     gap: 4,
   },
@@ -803,6 +804,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -853,14 +855,14 @@ function ContactCard({ contacts, hasOwnPhone }: { contacts: TripContact[]; hasOw
               accessibilityRole="button"
               accessibilityLabel={`Text ${contact.first_name}`}
               style={[styles.circleButton, { backgroundColor: colors.track }]}>
-              <Ionicons name="chatbubble-outline" size={20} color={colors.text} />
+              <Icon name="chatbubble-outline" size={20} color={colors.text} />
             </PressableScale>
             <PressableScale
               onPress={() => Linking.openURL(`tel:${contact.phone}`)}
               accessibilityRole="button"
               accessibilityLabel={`Call ${contact.first_name}`}
               style={[styles.circleButton, { backgroundColor: colors.primary }]}>
-              <Ionicons name="call-outline" size={20} color={colors.onPrimary} />
+              <Icon name="call-outline" size={20} color={colors.onPrimary} />
             </PressableScale>
           </View>
         ))

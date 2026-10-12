@@ -1,13 +1,13 @@
 // Screen 7: Trip group chat. Only the driver and approved riders can open it.
 // New messages arrive live through Supabase Realtime.
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeInDown, LayoutAnimationConfig } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Icon } from '@/components/icon';
 import { Avatar } from '@/components/avatar';
 import { PressableScale } from '@/components/motion';
 import { EmptyState, LoadError } from '@/components/states';
@@ -156,7 +156,7 @@ export default function ChatScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Send"
                 style={[styles.send, { backgroundColor: colors.primary, opacity: sending || !draft.trim() ? 0.4 : 1 }]}>
-                {sending ? <ActivityIndicator color={colors.onPrimary} /> : <Ionicons name="arrow-up" size={22} color={colors.onPrimary} />}
+                {sending ? <ActivityIndicator color={colors.onPrimary} /> : <Icon name="arrow-up" size={22} color={colors.onPrimary} />}
               </PressableScale>
             </View>
           </>
@@ -214,6 +214,7 @@ const styles = StyleSheet.create({
   bubble: {
     maxWidth: '78%',
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 2,
@@ -236,6 +237,7 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     borderWidth: 1,
     borderRadius: 22,
+    borderCurve: 'continuous',
     paddingHorizontal: Spacing.md,
     paddingTop: 12,
     fontSize: 16,
@@ -244,6 +246,7 @@ const styles = StyleSheet.create({
     width: TapTarget - 2,
     height: 44,
     borderRadius: 22,
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },

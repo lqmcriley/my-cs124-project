@@ -50,6 +50,10 @@ export type Place = {
 // Middle of campus, used to center maps and bias address search.
 export const CAMPUS_CENTER = { latitude: 40.1092, longitude: -88.2272 };
 
+// Trips starting within this distance of campus are "leaving campus"; trips
+// ending within it are "back to campus" (covers Champaign-Urbana).
+export const CAMPUS_RADIUS_MILES = 6;
+
 // Suggested pickup spots when posting a trip.
 export const PICKUP_SPOTS: Place[] = [
   { name: 'Illini Union', address: '1401 W Green St, Urbana, IL', latitude: 40.10921, longitude: -88.22722 },

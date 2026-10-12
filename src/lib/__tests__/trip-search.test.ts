@@ -1,6 +1,6 @@
 import { PICKUP_SPOTS, QUICK_PICKS } from '../config';
 import { UIUC_TO_HARTFORD_MILES, UIUC_TO_HARTFORD_POLYLINE } from '../__fixtures__/uiuc-to-hartford';
-import { alongTheWay, filterTrips, searchTrips, stopFromParams, stopToParams } from '../trip-search';
+import { alongTheWay, filterTrips, searchByDirection, searchTrips, stopFromParams, stopToParams, tripDirection } from '../trip-search';
 import type { Trip } from '../types';
 
 const NOW = new Date('2026-10-10T12:00:00');
@@ -143,5 +143,30 @@ describe('stop params', () => {
   it('ignores missing or broken params', () => {
     expect(stopFromParams({})).toBeNull();
     expect(stopFromParams({ stopName: 'X', stopLat: 'abc', stopLng: '1' })).toBeNull();
+  });
+});
+
+describe('leaving vs back to campus', () => {
+  const out = trip('OHare', ohare, '2026-10-11T09:00:00');
+  // O'Hare back to the Illini Union.
+  const back = trip('Union', union, '2026-10-12T20:00:00', { origin_name: "O'Hare", origin_lat: ohare.latitude, origin_lng: ohare.longitude });
+  // Chicago to Indy: neither way.
+  const elsewhere = trip('Indy', indy, '2026-10-11T09:00:00', { origin_lat: ohare.latitude, origin_lng: ohare.longitude });
+
+  it('tells which way a trip goes', () => {
+    expect(tripDirection(out)).toBe('leaving');
+    expect(tripDirection(back)).toBe('returning');
+    expect(tripDirection(elsewhere)).toBeNull();
+  });
+
+  it('shows only trips going your way', () => {
+    const all = [out, back, elsewhere];
+    expect(searchByDirection(all, 'leaving', null, null, NOW).map((match) => match.trip.id)).toEqual(['OHare']);
+    expect(searchByDirection(all, 'returning', null, null, NOW).map((match) => match.trip.id)).toEqual(['Union']);
+  });
+
+  it('searches back-to-campus trips by where you are coming from', () => {
+    expect(searchByDirection([back], 'returning', ohare, null, NOW)).toHaveLength(1);
+    expect(searchByDirection([back], 'returning', indy, null, NOW)).toHaveLength(0);
   });
 });

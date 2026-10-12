@@ -9,14 +9,16 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { CarIllustration } from '@/components/car-illustration';
 import { FoldSection } from '@/components/fold-section';
 import { PlaceSearchField } from '@/components/place-search-field';
+import { ReturnTripNote } from '@/components/return-trip-note';
 import { PriceBreakdown } from '@/components/price-breakdown';
 import { RouteMap } from '@/components/route-map';
 import { sectionHasError, sectionsWithErrors, TripDetailsFields, TripSection } from '@/components/trip-details-fields';
-import { Body, Button, Card, Chip, ErrorText, Heading, Screen, TextField } from '@/components/ui';
+import { Body, Button, Card, Chip, ChipRow, ErrorText, Heading, Screen, SegmentedControl, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { PICKUP_SPOTS, Place, QUICK_PICKS } from '@/lib/config';
 import { friendlyError } from '@/lib/errors';
+import type { Direction } from '@/lib/trip-search';
 import { carName, efficiencyText, energy, fuelTag, isElectric } from '@/lib/fuel';
 import { formatDuration } from '@/lib/format';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
@@ -73,6 +75,21 @@ function PostTripForm({ car, driverId }: { car: Car; driverId: string }) {
     setRouteError('');
   }
 
+  // Leaving campus: pick up on campus. Back to campus: pick up somewhere else, drop off on campus.
+  const [direction, setDirection] = useState<Direction>('leaving');
+  function changeDirection(next: Direction) {
+    setDirection(next);
+    setValues((current) => ({ ...current, from: null, to: null, route: null }));
+    setRouteError('');
+  }
+  const campusChips = PICKUP_SPOTS.map((spot) => ({ place: spot as Place, icon: undefined }));
+  const awayChips = QUICK_PICKS.map((pick) => ({
+    place: { name: pick.name, address: pick.address, latitude: pick.latitude, longitude: pick.longitude, isAirport: pick.isAirport } as Place,
+    icon: pick.isAirport ? ('airplane-outline' as const) : undefined,
+  }));
+  const fromChips = direction === 'leaving' ? campusChips : awayChips;
+  const toChips = direction === 'leaving' ? awayChips : campusChips;
+
   const { from, to } = values;
   const routeLoading = from !== null && to !== null && values.route === null && !routeError;
 
@@ -121,6 +138,7 @@ function PostTripForm({ car, driverId }: { car: Car; driverId: string }) {
       const id = await createTrip(toTripRow(driverId, car, values));
       successHaptic();
       setValues(emptyTripForm(car));
+      setDirection('leaving');
       setOpen({ where: true });
       router.push(`/trip/${id}`);
     } catch (err) {
@@ -152,29 +170,42 @@ function PostTripForm({ car, driverId }: { car: Car; driverId: string }) {
         open={!!open.where}
         onToggle={() => toggle('where')}
         hasError={sectionHasError('where', errors) || !!routeError}>
-        <PlaceSearchField label="Pickup spot" value={from} onChange={(place) => setPlace('from', place)} error={errors.from} placeholder="Or search another spot">
-          <View style={styles.chips}>
-            {PICKUP_SPOTS.map((spot) => (
-              <Chip key={spot.name} label={spot.name} selected={false} onPress={() => setPlace('from', spot)} />
+        <SegmentedControl
+          options={[
+            { value: 'leaving', label: 'Leaving campus', icon: 'arrow-up-circle-outline' },
+            { value: 'returning', label: 'Back to campus', icon: 'school-outline' },
+          ]}
+          value={direction}
+          onChange={changeDirection}
+        />
+
+        <PlaceSearchField
+          label={direction === 'leaving' ? 'Pickup spot' : 'Picking up at'}
+          value={from}
+          onChange={(place) => setPlace('from', place)}
+          error={errors.from}
+          placeholder={direction === 'leaving' ? 'Or search another spot' : 'Search a city, address or airport'}>
+          <ChipRow>
+            {fromChips.map(({ place, icon }) => (
+              <Chip key={place.name} label={place.name} icon={icon} selected={false} onPress={() => setPlace('from', place)} />
             ))}
-          </View>
+          </ChipRow>
         </PlaceSearchField>
 
-        <PlaceSearchField label="Going to" value={to} onChange={(place) => setPlace('to', place)} error={errors.to} placeholder="Search a city, address or airport">
-          <View style={styles.chips}>
-            {QUICK_PICKS.map((pick) => (
-              <Chip
-                key={pick.name}
-                label={pick.name}
-                icon={pick.isAirport ? 'airplane-outline' : undefined}
-                selected={false}
-                onPress={() =>
-                  setPlace('to', { name: pick.name, address: pick.address, latitude: pick.latitude, longitude: pick.longitude, isAirport: pick.isAirport })
-                }
-              />
+        <PlaceSearchField
+          label={direction === 'leaving' ? 'Going to' : 'Dropping off at'}
+          value={to}
+          onChange={(place) => setPlace('to', place)}
+          error={errors.to}
+          placeholder={direction === 'leaving' ? 'Search a city, address or airport' : 'Or search another spot on campus'}>
+          <ChipRow>
+            {toChips.map(({ place, icon }) => (
+              <Chip key={place.name} label={place.name} icon={icon} selected={false} onPress={() => setPlace('to', place)} />
             ))}
-          </View>
+          </ChipRow>
         </PlaceSearchField>
+
+        {direction === 'returning' && <ReturnTripNote compact />}
 
         {(from || to) && (
           <RouteMap from={from && { ...from, title: from.name }} to={to && { ...to, title: to.name }} route={values.route?.points} />
@@ -236,11 +267,6 @@ function PostTripForm({ car, driverId }: { car: Car; driverId: string }) {
 }
 
 const styles = StyleSheet.create({
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-  },
   carRow: {
     flexDirection: 'row',
     alignItems: 'center',

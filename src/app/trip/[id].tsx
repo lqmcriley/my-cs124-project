@@ -15,6 +15,7 @@ import { PriceBreakdown } from '@/components/price-breakdown';
 import { CarIllustration } from '@/components/car-illustration';
 import { OdometerCard } from '@/components/odometer-card';
 import { showPersonActions } from '@/components/person-actions';
+import { ReturnTripNote } from '@/components/return-trip-note';
 import { SafetyCard } from '@/components/safety-card';
 import { SeatMap } from '@/components/seat-map';
 import { EmptyState, LoadError, SkeletonList } from '@/components/states';
@@ -29,6 +30,7 @@ import {
   isUpcoming,
   fairSplit,
   isWithin24Hours,
+  movedAfterApproval,
   payingRiders,
   paymentNote,
   REQUEST_STATUS_TEXT,
@@ -65,7 +67,7 @@ import { fetchMyReviewsForTrip, fetchRatingSummary } from '@/lib/reviews-api';
 import { fetchTripContacts, TripContact } from '@/lib/safety-api';
 import { formatPhone } from '@/lib/phone';
 import { SeatHold, seatLabel } from '@/lib/seats';
-import { alongTheWay, StopParams, stopFromParams, stopToParams } from '@/lib/trip-search';
+import { alongTheWay, StopParams, stopFromParams, stopToParams, tripDirection } from '@/lib/trip-search';
 import { fetchTrip } from '@/lib/trips-api';
 import type { Stretch } from '@/lib/pricing';
 import type { RequestWithRider, TripRequest, TripRider, TripWithDriver } from '@/lib/types';
@@ -213,7 +215,9 @@ export default function TripDetailScreen() {
   const payingRequests = requests.filter((request) => request.status === 'approved' || request.late_cancel);
   const iOwe = myRequest !== null && (myRequest.status === 'approved' || myRequest.late_cancel);
   const driverName = firstName(trip.driver.full_name);
-  const lateNow = isWithin24Hours(trip, loadedAt);
+  const moved = movedAfterApproval(trip, myRequest); // driver moved the trip a lot: you can drop out free
+  const lateNow = isWithin24Hours(trip, loadedAt) && !moved;
+  const direction = tripDirection(trip);
   const cancelCutoff = new Date(departure.getTime() - 24 * 60 * 60 * 1000);
   // No-shows can be reported for 7 days after the trip leaves.
   const canReport = departed && loadedAt.getTime() - departure.getTime() < 7 * 24 * 60 * 60 * 1000;
@@ -256,6 +260,8 @@ export default function TripDetailScreen() {
         <IconRow icon="briefcase-outline" text={`Luggage: ${luggage}`} />
       </View>
 
+      {direction === 'returning' && !isMyTrip && <ReturnTripNote />}
+
       {/* You searched for a stop this trip passes on the way */}
       {along && stop && !myRequestOpen && (
         <View style={[styles.headsUp, { borderColor: colors.primary, backgroundColor: colors.card }]}>
@@ -284,6 +290,15 @@ export default function TripDetailScreen() {
               tone={myRequest.late_cancel ? 'bad' : statusTone(myRequest.status)}
             />
           </View>
+          {moved && trip.previous_departure_at && (
+            <View style={[styles.headsUp, { borderColor: colors.primary, backgroundColor: colors.card }]}>
+              <IconRow icon="time-outline" text={`${driverName} moved this trip`} />
+              <Body>
+                From {formatDeparture(new Date(trip.previous_departure_at))} to {formatDeparture(departure)}. If the new time doesn&apos;t
+                work for you, you can leave this trip for free. It won&apos;t count against you and you won&apos;t owe anything.
+              </Body>
+            </View>
+          )}
           {myRequest.seat && <IconRow icon="grid-outline" text={`Your seat: ${seatLabel(myRequest.seat)}`} />}
           {myRequest.dropoff_name && <IconRow icon="flag-outline" text={`Getting off at ${myRequest.dropoff_name}`} />}
           {myRequestOpen && !departed && (
@@ -295,7 +310,13 @@ export default function TripDetailScreen() {
             <IconRow
               muted
               icon={lateNow ? 'alert-circle-outline' : 'shield-checkmark-outline'}
-              text={lateNow ? 'Less than 24 hours to go: cancelling now counts as a late cancel.' : `Free to cancel until ${formatDeparture(cancelCutoff)}`}
+              text={
+                moved
+                  ? 'The driver moved the trip, so you can leave for free.'
+                  : lateNow
+                    ? 'Less than 24 hours to go: cancelling now counts as a late cancel.'
+                    : `Free to cancel until ${formatDeparture(cancelCutoff)}`
+              }
             />
           )}
           {myRequest.status === 'approved' && (
@@ -311,7 +332,9 @@ export default function TripDetailScreen() {
                   myRequest.status === 'approved' ? 'Leave this trip?' : 'Cancel your request?',
                   myRequest.status === 'approved' && lateNow
                     ? `It's less than 24 hours before the trip, so this counts as a late cancel on your reliability. You'll still owe your share (about ${formatMoney(riderEstimate(trip, myRequest.rider_miles, true).now)}) so the others don't pay more.`
-                    : `${driverName} will see that you're no longer coming.${myRequest.status === 'approved' ? ' Cancelling more than 24 hours ahead is free.' : ''}`,
+                    : moved
+                      ? `${driverName} moved the trip, so leaving is free. It won't count against you and you won't owe anything.`
+                      : `${driverName} will see that you're no longer coming.${myRequest.status === 'approved' ? ' Cancelling more than 24 hours ahead is free.' : ''}`,
                   myRequest.status === 'approved' ? 'Leave trip' : 'Cancel request',
                   () => run('cancel-request', () => cancelRequest(myRequest.id)),
                 )

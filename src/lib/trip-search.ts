@@ -1,6 +1,6 @@
 // Filtering trips for the "Find a ride" screen. Pure functions, tested in __tests__/trip-search.test.ts.
 
-import { ALONG_ROUTE_MIN_MILES, ALONG_ROUTE_RADIUS_MILES, Place, SEARCH_RADIUS_MILES } from './config';
+import { ALONG_ROUTE_MIN_MILES, ALONG_ROUTE_RADIUS_MILES, CAMPUS_CENTER, CAMPUS_RADIUS_MILES, Place, SEARCH_RADIUS_MILES } from './config';
 import { closestPointOnRoute, decodePolyline, distanceMiles, LatLng, routeLengthMiles } from './geo';
 import type { Trip } from './types';
 
@@ -91,4 +91,33 @@ export function stopFromParams(params: StopParams): Place | null {
   const longitude = Number(params.stopLng);
   if (!params.stopName || !Number.isFinite(latitude) || !Number.isFinite(longitude) || params.stopLat === undefined) return null;
   return { name: params.stopName, address: params.stopAddress ?? '', latitude, longitude };
+}
+
+// ---------------------------------------------------------------------------
+// Leaving campus vs. back to campus
+// ---------------------------------------------------------------------------
+
+export type Direction = 'leaving' | 'returning';
+
+export const CAMPUS_AREA: SearchArea = { ...CAMPUS_CENTER, radiusMiles: CAMPUS_RADIUS_MILES };
+
+// Which way a trip goes: from campus, back to campus, or neither (e.g. Chicago to Indy).
+export function tripDirection(trip: Trip): Direction | null {
+  if (isNear({ latitude: trip.origin_lat, longitude: trip.origin_lng }, CAMPUS_AREA)) return 'leaving';
+  if (isNear({ latitude: trip.dest_lat, longitude: trip.dest_lng }, CAMPUS_AREA)) return 'returning';
+  return null;
+}
+
+// Find a ride: leaving campus searches by where you're going (including trips
+// passing it on the way); back to campus searches by where you're coming from.
+export function searchByDirection<T extends Trip>(
+  trips: T[],
+  direction: Direction,
+  place: SearchArea | null,
+  date: Date | null,
+  now: Date = new Date(),
+): TripMatch<T>[] {
+  const sameWay = trips.filter((trip) => tripDirection(trip) === direction);
+  if (direction === 'leaving') return searchTrips(sameWay, { from: null, to: place, date }, now);
+  return filterTrips(sameWay, { from: place, to: null, date }, now).map((trip) => ({ trip, along: null }));
 }

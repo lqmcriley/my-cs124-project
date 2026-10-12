@@ -2,7 +2,7 @@
 // useTheme(), so light and dark mode work automatically.
 
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { ReactElement, ReactNode, useState } from 'react';
+import { ReactElement, ReactNode, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -19,11 +19,20 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { FadeSwap, PressableScale } from '@/components/motion';
 import { FontFamily, Radius, Spacing, TapTarget } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { selectionHaptic } from '@/lib/haptics';
+
+// Segmented switch sizes and the bubble's spring (smooth, barely any bounce).
+const SEGMENT_PAD = 3;
+const SEGMENT_GAP = 3;
+const SEGMENT_SPRING = { damping: 22, stiffness: 260, mass: 0.7 };
 
 // Use this instead of React Native's Text so every word uses the app font.
 export function Text({ style, ...props }: TextProps) {
@@ -208,6 +217,20 @@ export function Chip({
   );
 }
 
+// A single row of chips you swipe sideways, instead of chips wrapping onto
+// uneven lines. Keeps option groups to one tidy line.
+export function ChipRow({ children }: { children: ReactNode }) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.chipRow}>
+      {children}
+    </ScrollView>
+  );
+}
+
 export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const colors = useTheme();
   return (
@@ -216,6 +239,11 @@ export function Card({ children, style }: { children: ReactNode; style?: StylePr
 }
 
 const styles = StyleSheet.create({
+  chipRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    paddingRight: Spacing.md,
+  },
   screenContent: {
     padding: Spacing.lg,
     gap: Spacing.md,
@@ -290,8 +318,15 @@ const styles = StyleSheet.create({
   segments: {
     flexDirection: 'row',
     borderRadius: Radius.pill,
-    padding: 3,
-    gap: 3,
+    padding: SEGMENT_PAD,
+    gap: SEGMENT_GAP,
+  },
+  segmentBubble: {
+    position: 'absolute',
+    top: SEGMENT_PAD,
+    bottom: SEGMENT_PAD,
+    left: 0,
+    borderRadius: Radius.pill,
   },
   segment: {
     flex: 1,
@@ -370,26 +405,89 @@ export function SegmentedControl<T extends string | number>({
   onChange: (value: T) => void;
 }) {
   const colors = useTheme();
+  const reduceMotion = useReducedMotion();
+  const [width, setWidth] = useState(0);
+  const count = options.length;
+  const selectedIndex = Math.max(0, options.findIndex((option) => option.value === value));
+  // Each segment's width, and where segment i starts (inside the 3pt padding, with 3pt gaps).
+  const segmentWidth = width > 0 ? (width - SEGMENT_PAD * 2 - SEGMENT_GAP * (count - 1)) / count : 0;
+  const step = segmentWidth + SEGMENT_GAP;
+
+  // The orange bubble's position. It follows the selected option, and you can drag it.
+  const x = useSharedValue(SEGMENT_PAD);
+  const dragStart = useSharedValue(0);
+  useEffect(() => {
+    const target = SEGMENT_PAD + selectedIndex * step;
+    x.set(reduceMotion ? target : withSpring(target, SEGMENT_SPRING));
+  }, [selectedIndex, step, reduceMotion, x]);
+
+  function choose(index: number) {
+    const option = options[index];
+    if (option && option.value !== value) {
+      selectionHaptic();
+      onChange(option.value);
+    } else {
+      // Dropped back on the same option: settle into place.
+      x.set(withSpring(SEGMENT_PAD + index * step, SEGMENT_SPRING));
+    }
+  }
+
+  // Sideways drags move the bubble; up/down drags are left to the page so it still scrolls.
+  const drag = Gesture.Pan()
+    .activeOffsetX([-6, 6])
+    .failOffsetY([-12, 12])
+    .onStart(() => {
+      dragStart.set(x.get());
+    })
+    .onUpdate((event) => {
+      const min = SEGMENT_PAD;
+      const max = SEGMENT_PAD + (count - 1) * step;
+      x.set(Math.min(max, Math.max(min, dragStart.get() + event.translationX)));
+    })
+    .onEnd(() => {
+      const index = Math.min(count - 1, Math.max(0, Math.round((x.get() - SEGMENT_PAD) / step)));
+      scheduleOnRN(choose, index);
+    });
+
+  const bubble = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
+
   return (
-    <View style={[styles.segments, { backgroundColor: colors.track }]} accessibilityRole="radiogroup">
-      {options.map((option) => {
-        const selected = option.value === value;
-        const textColor = selected ? colors.onPrimary : colors.text;
-        return (
-          <PressableScale
-            key={String(option.value)}
-            scaleTo={0.97}
-            onPress={() => onChange(option.value)}
-            accessibilityRole="radio"
-            accessibilityState={{ selected }}
-            style={[styles.segment, selected && { backgroundColor: colors.primary }]}>
-            {option.icon && <Ionicons name={option.icon} size={16} color={textColor} />}
-            <Text style={[styles.segmentText, { color: textColor }]} numberOfLines={1}>
-              {option.label}
-            </Text>
-          </PressableScale>
-        );
-      })}
-    </View>
+    <GestureDetector gesture={drag}>
+      <View
+        style={[styles.segments, { backgroundColor: colors.track }]}
+        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+        accessibilityRole="radiogroup">
+        {width > 0 && (
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.segmentBubble, { width: segmentWidth, backgroundColor: colors.primary }, bubble]}
+          />
+        )}
+        {options.map((option) => {
+          const selected = option.value === value;
+          const textColor = selected ? colors.onPrimary : colors.text;
+          return (
+            <PressableScale
+              key={String(option.value)}
+              scaleTo={0.97}
+              onPress={() => {
+                if (!selected) {
+                  selectionHaptic();
+                  onChange(option.value);
+                }
+              }}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              accessibilityLabel={option.label}
+              style={styles.segment}>
+              {option.icon && <Ionicons name={option.icon} size={16} color={textColor} />}
+              <Text style={[styles.segmentText, { color: textColor }]} numberOfLines={1}>
+                {option.label}
+              </Text>
+            </PressableScale>
+          );
+        })}
+      </View>
+    </GestureDetector>
   );
 }

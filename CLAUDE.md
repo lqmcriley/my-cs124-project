@@ -35,7 +35,8 @@ src/
     profile-setup.tsx       First-time profile (uses ProfileForm)
     edit-profile.tsx        Modal, same ProfileForm
     (tabs)/_layout.tsx      Bottom tabs
-    (tabs)/index.tsx        Home / Find a ride (search, quick picks, list/map)
+    (tabs)/index.tsx        Home / Find a ride (Leaving campus / Back to campus, search, quick picks, list)
+    (tabs)/map.tsx          Map tab: every upcoming trip's route; tap one to see the ride
     (tabs)/post.tsx         Post a trip (live route + price preview)
     trip/[id].tsx           Trip detail
     edit-trip/[id].tsx      Edit trip (driver)
@@ -47,7 +48,7 @@ src/
     ui.tsx                  Screen, Heading, Body, Label, Button, TextField, Chip, Card, ErrorText
     profile-form.tsx        Profile + car form
     place-search-field.tsx  Google address autocomplete
-    route-map.tsx, trips-map.tsx, trip-card.tsx, price-breakdown.tsx, date-time-field.tsx
+    route-map.tsx, trip-card.tsx, return-trip-note.tsx, price-breakdown.tsx, date-time-field.tsx
     avatar.tsx, logo.tsx
   constants/theme.ts        Light/dark colors, spacing, radius, TapTarget
   hooks/use-theme.ts        Current color palette
@@ -82,6 +83,8 @@ scripts/test-db.sh          Runs all migrations + database tests on a throwaway 
 
 - Reliability (owner's choice): cancelling an approved seat <24h before departure = late cancel; the seat reopens but the rider still owes (`payingRiders()` = approved + late cancellers), so others' price never rises. Drivers cancelling <24h with riders = late cancel. No-shows reportable for 7 days after departure. Totals via the `reliability()` SQL function; labels in `lib/reliability.ts`.
 - A car MPG change updates that driver's upcoming trips only while nobody is booked (trigger `cars_sync_trip_mpg`).
+- Direction (owner's choice): trips are "leaving campus" (start within 6 mi of campus) or "back to campus" (end there); `tripDirection()` / `searchByDirection()` in `lib/trip-search.ts`. Find a ride and Post a trip have a Leaving / Back to campus switch; back-to-campus trips show `ReturnTripNote` (delays happen, keep a backup). Rider flight delays: normal rules (driver waits within the flexible window). Driver moves a booked trip by more than the window: `previous_departure_at`/`departure_moved_at` are recorded by trigger, riders see a banner and can leave free (`cancel_request` skips the late cancel; `movedAfterApproval()` in `lib/booking.ts`).
+- Option bubbles go in a single swipeable row (`ChipRow` in `ui.tsx`), never wrapping. Segmented switches have a draggable bubble (needs `GestureHandlerRootView` in the root layout).
 - UI conventions (owner's choices): pill-shaped buttons that shrink-and-spring on press (`PressableScale` in `components/motion.tsx`); full-width `SegmentedControl` for 2–7 short options (chips only for long lists); pill search bar in `place-search-field.tsx`; tab bar never minimizes; Post/Edit trip use fold-out sections (`components/fold-section.tsx`, `trip-details-fields.tsx`); an illustrated car in the car's color and body style: sedan, hatchback, SUV, pickup, minivan, coupe (`components/car-illustration.tsx`, `lib/car-color.ts`), never a real photo.
 - Vibe check: five 0–4 sliders on profiles (`lib/vibes.ts`, `components/vibes.tsx`): chat, music, temperature, windows, stops. `chat_preference` is kept in sync from the chat slider.
 - Along the way: `searchTrips()` / `alongTheWay()` in `lib/trip-search.ts` use the stored route polyline (`closestPointOnRoute` in `lib/geo.ts`). Tested on a real UIUC→Hartford route in `lib/__fixtures__/`. Stops pass between screens as `stopName/stopAddress/stopLat/stopLng` link params.

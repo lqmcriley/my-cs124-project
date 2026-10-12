@@ -16,6 +16,11 @@ export default function TabLayout() {
         <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="map">
+        <NativeTabs.Trigger.Label>Map</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'map', selected: 'map.fill' }} md="map" />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="post">
         <NativeTabs.Trigger.Label>Post a trip</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'plus.circle', selected: 'plus.circle.fill' }} md="add_circle" />

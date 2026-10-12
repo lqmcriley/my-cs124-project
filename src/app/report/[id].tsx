@@ -3,10 +3,9 @@
 
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert } from 'react-native';
 
-import { Body, Button, Chip, ErrorText, Heading, Label, Screen, TextField } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { Body, Button, Chip, ChipRow, ErrorText, Heading, Label, Screen, TextField } from '@/components/ui';
 import { friendlyError } from '@/lib/errors';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { REPORT_REASONS, reportUser } from '@/lib/safety-api';
@@ -49,11 +48,11 @@ export default function ReportScreen() {
       <Body muted>Reports are private. {who} won&apos;t be told. If you&apos;re in danger right now, call 911.</Body>
 
       <Label>What happened?</Label>
-      <View style={styles.chips}>
+      <ChipRow>
         {REPORT_REASONS.map((option) => (
           <Chip key={option.value} label={option.label} selected={reason === option.value} onPress={() => setReason(option.value)} />
         ))}
-      </View>
+      </ChipRow>
 
       <TextField
         label="Details (optional)"
@@ -69,11 +68,3 @@ export default function ReportScreen() {
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-  },
-});

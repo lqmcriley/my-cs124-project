@@ -80,6 +80,11 @@ function EditTripForm({ trip, holds }: { trip: TripWithDriver; holds: SeatHold[]
   function toggle(section: TripSection) {
     setOpen((current) => ({ ...current, [section]: !current[section] }));
   }
+  // Moving a booked trip by more than the flexible window lets riders drop out free.
+  const bigMove =
+    trip.seats_booked > 0 &&
+    values.departure !== null &&
+    Math.abs(values.departure.getTime() - new Date(trip.departure_at).getTime()) / 60000 > trip.flex_minutes;
   // You can offer up to as many seats as your car has.
   const maxSeats = trip.car?.seats ?? trip.seats_offered;
 
@@ -142,6 +147,16 @@ function EditTripForm({ trip, holds }: { trip: TripWithDriver; holds: SeatHold[]
         ridersBooked={payingRiders(trip)}
         viewer="driver"
       />
+
+      {bigMove && (
+        <Card>
+          <Label>Riders can drop out for free</Label>
+          <Body muted>
+            You&apos;re moving the trip by more than your {trip.flex_minutes}-minute flexible window. Your riders will see the new
+            time and can leave for free, without it counting against them. Let them know why in the group chat.
+          </Body>
+        </Card>
+      )}
 
       <ErrorText>{saveError}</ErrorText>
       <Button title="Save changes" onPress={onSave} loading={saving} />

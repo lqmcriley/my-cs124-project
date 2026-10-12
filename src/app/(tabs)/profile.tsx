@@ -2,13 +2,15 @@
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { ActionGroup, ActionRow } from '@/components/action-row';
 import { Avatar } from '@/components/avatar';
+import { AnimatedItem } from '@/components/motion';
 import { CarIllustration } from '@/components/car-illustration';
 import { ReliabilityBadge } from '@/components/reliability-badge';
 import { VibeMeters } from '@/components/vibes';
-import { Badge, Body, Button, Card, Heading, IconRow, Label, Screen, Text } from '@/components/ui';
+import { Badge, Body, Card, Heading, IconRow, Label, Screen, Text } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import type { Reliability } from '@/lib/reliability';
 import { fetchReliability } from '@/lib/reliability-api';
@@ -21,7 +23,7 @@ import { useAuth } from '@/providers/auth-provider';
 
 export default function ProfileScreen() {
   const colors = useTheme();
-  const { session, profile, car, payment, signOut } = useAuth();
+  const { session, profile, car, payment } = useAuth();
   const [reliability, setReliability] = useState<Reliability | undefined>(undefined);
   const [rating, setRating] = useState<RatingSummary | undefined>(undefined);
   const [reviews, setReviews] = useState<ReviewWithReviewer[]>([]);
@@ -54,6 +56,23 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      <AnimatedItem index={1}>
+        <ActionGroup>
+          {[
+            <ActionRow
+              key="edit"
+              icon="create-outline"
+              tone="primary"
+              title="Edit profile"
+              subtitle="Photo, car, seats, vibes, payment"
+              onPress={() => router.push('/edit-profile')}
+            />,
+            <ActionRow key="blocked" icon="ban-outline" title="Blocked people" subtitle="People you never ride with" onPress={() => router.push('/blocked')} />,
+            <ActionRow key="sign-out" icon="log-out-outline" tone="danger" title="Sign out" onPress={() => router.push('/sign-out')} />,
+          ]}
+        </ActionGroup>
+      </AnimatedItem>
+
       <Card>
         <Label>Reliability</Label>
         <Body muted>
@@ -69,7 +88,7 @@ export default function ProfileScreen() {
 
       <Card>
         <Label>Vibe check</Label>
-        <VibeMeters profile={profile} />
+        <VibeMeters profile={profile} detailed />
       </Card>
 
       <Card>
@@ -125,19 +144,6 @@ export default function ProfileScreen() {
         )}
       </Card>
 
-      <Button title="Edit profile" icon="create-outline" variant="secondary" onPress={() => router.push('/edit-profile')} />
-      <Button title="Blocked people" icon="ban-outline" variant="secondary" onPress={() => router.push('/blocked')} />
-      <Button
-        title="Sign out"
-        icon="log-out-outline"
-        variant="danger"
-        onPress={() =>
-          Alert.alert('Sign out?', 'You can sign back in any time with your @illinois.edu email.', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Sign out', style: 'destructive', onPress: signOut },
-          ])
-        }
-      />
     </Screen>
   );
 }

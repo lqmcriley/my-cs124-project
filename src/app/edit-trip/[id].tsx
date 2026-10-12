@@ -11,7 +11,11 @@ import { Body, Button, Card, ErrorText, Heading, Label, Screen } from '@/compone
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { payingRiders } from '@/lib/booking';
+import { fetchTripSeats } from '@/lib/booking-api';
+import { friendlyError } from '@/lib/errors';
+import { energy } from '@/lib/fuel';
 import { formatMoney } from '@/lib/format';
+import type { SeatHold } from '@/lib/seats';
 import { toTripUpdate, tripFormFromTrip, TripFormErrors, TripFormValues, validateTripForm } from '@/lib/trip-form';
 import { fetchTrip, updateTrip } from '@/lib/trips-api';
 import type { TripWithDriver } from '@/lib/types';
@@ -22,16 +26,19 @@ export default function EditTripScreen() {
   const colors = useTheme();
   const { session } = useAuth();
   const [trip, setTrip] = useState<TripWithDriver | null | undefined>(undefined);
+  const [holds, setHolds] = useState<SeatHold[]>([]); // seats riders already asked for
   const [error, setError] = useState('');
 
   useEffect(() => {
     let stale = false;
-    fetchTrip(id)
-      .then((result) => {
-        if (!stale) setTrip(result);
+    Promise.all([fetchTrip(id), fetchTripSeats(id).catch(() => [])])
+      .then(([result, seatHolds]) => {
+        if (stale) return;
+        setTrip(result);
+        setHolds(seatHolds);
       })
       .catch((err: Error) => {
-        if (!stale) setError(err.message);
+        if (!stale) setError(friendlyError(err));
       });
     return () => {
       stale = true;
@@ -60,10 +67,10 @@ export default function EditTripScreen() {
       </Screen>
     );
   }
-  return <EditTripForm trip={trip} />;
+  return <EditTripForm trip={trip} holds={holds} />;
 }
 
-function EditTripForm({ trip }: { trip: TripWithDriver }) {
+function EditTripForm({ trip, holds }: { trip: TripWithDriver; holds: SeatHold[] }) {
   const [values, setValues] = useState<TripFormValues>(() => tripFormFromTrip(trip));
   const [errors, setErrors] = useState<TripFormErrors>({});
   const [saveError, setSaveError] = useState('');
@@ -95,7 +102,7 @@ function EditTripForm({ trip }: { trip: TripWithDriver }) {
       await updateTrip(trip.id, toTripUpdate(values));
       router.back();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setSaveError(friendlyError(err, 'Something went wrong. Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -108,17 +115,28 @@ function EditTripForm({ trip }: { trip: TripWithDriver }) {
           {trip.origin_name} → {trip.dest_name}
         </Label>
         <Body muted>
-          {trip.route_miles} mi · gas at {formatMoney(trip.gas_price)}/gal. The route, pickup spot and gas price can&apos;t
-          change after posting, so riders&apos; prices stay fair. To change those, cancel and post a new trip. If you update
-          your car&apos;s MPG in your profile, this trip updates too, as long as nobody has booked yet.
+          {trip.route_miles} mi · {energy(trip.fuel).thing} at {formatMoney(trip.gas_price)}/{energy(trip.fuel).unit}. The route,
+          pickup spot and {energy(trip.fuel).priceName.toLowerCase()} can&apos;t change after posting, so riders&apos; prices stay fair.
+          To change those, cancel and post a new trip. If you update your car&apos;s {energy(trip.fuel).efficiencyUnit} in your
+          profile, this trip updates too, as long as nobody has booked yet.
         </Body>
       </Card>
 
-      <TripDetailsFields values={values} errors={errors} set={set} maxSeats={maxSeats} minSeats={Math.max(trip.seats_booked, 1)} open={open} toggle={toggle} />
+      <TripDetailsFields
+        values={values}
+        errors={errors}
+        set={set}
+        maxSeats={maxSeats}
+        minSeats={Math.max(trip.seats_booked, 1)}
+        holds={holds}
+        open={open}
+        toggle={toggle}
+      />
 
       <PriceBreakdown
         miles={trip.route_miles}
         mpg={trip.mpg}
+        fuel={trip.fuel}
         gasPrice={trip.gas_price}
         seatsOffered={values.seats}
         ridersBooked={payingRiders(trip)}

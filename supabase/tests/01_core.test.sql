@@ -39,7 +39,7 @@ select test.fails($$insert into public.trips (driver_id, car_id, origin_name, or
   values ('11111111-0000-0000-0000-000000000001', '11111111-0000-0000-0000-0000000000c1', 'A', 'x', 40, -88, 'B', 'y', 41, -87, 150, now() + interval '1 day', 1, 'A', 3.49, 10)$$,
   'cannot post with a fake low MPG');
 select test.fails($$update public.trips set gas_price = 9.99$$, 'gas price is locked after posting');
-select test.fails($$update public.trips set seats_offered = 3$$, 'cannot offer more seats than the car has');
+select test.fails($$update public.trips set seats_offered = 4$$, 'cannot offer more seats than the car has');
 
 -- Booking -------------------------------------------------------------------
 select test.fails($$select public.request_seat('11111111-0000-0000-0000-0000000000f1')$$, 'driver cannot request own trip');

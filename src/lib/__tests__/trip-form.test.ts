@@ -49,9 +49,54 @@ describe('validateTripForm', () => {
     expect(validateTripForm({ ...valid, departure: new Date('2026-10-10T11:00:00') }, car.seats, NOW).departure).toBeDefined();
   });
 
-  it('limits seats to the car', () => {
-    expect(validateTripForm({ ...valid, seats: 4 }, car.seats, NOW).seats).toBeDefined();
-    expect(validateTripForm({ ...valid, seats: 0 }, car.seats, NOW).seats).toBeDefined();
+  it('limits seats to the car on trips without a seat map', () => {
+    const noMap = { ...valid, seatLayout: null, openSeats: [] };
+    expect(validateTripForm({ ...noMap, seats: 4 }, car.seats, NOW).seats).toBeDefined();
+    expect(validateTripForm({ ...noMap, seats: 0 }, car.seats, NOW).seats).toBeDefined();
+    expect(validateTripForm({ ...noMap, seats: 2 }, car.seats, NOW)).toEqual({});
+  });
+
+  it('needs at least one seat tapped on the seat map', () => {
+    expect(validateTripForm({ ...valid, openSeats: [] }, car.seats, NOW).seats).toBeDefined();
+  });
+});
+
+describe('electric cars', () => {
+  const tesla: Car = { ...car, make: 'Tesla', model: 'Model 3', mpg: 4, fuel: 'electric' };
+
+  it('starts with a charging price per kWh', () => {
+    expect(emptyTripForm(tesla).gasPrice).toBe('0.20');
+  });
+
+  it('checks the charging price, not a gas price', () => {
+    const form = { ...valid, fuel: 'electric' as const, gasPrice: '0.25' };
+    expect(validateTripForm(form, car.seats, NOW)).toEqual({});
+    expect(validateTripForm({ ...form, gasPrice: '3.49' }, car.seats, NOW).gasPrice).toMatch(/per kWh/);
+  });
+});
+
+describe('seat maps', () => {
+  it('starts with every seat of a car saved before seat maps', () => {
+    // 3 passenger seats -> the 4-seat layout: front + two in the back.
+    expect(valid.seatLayout).toBe('4');
+    expect(valid.openSeats).toEqual(['front', 'back_left', 'back_right']);
+  });
+
+  it('skips the cramped seat by default', () => {
+    const form = emptyTripForm({ ...car, seats: 4, seat_layout: '5_cramped' });
+    expect(form.openSeats).toEqual(['front', 'back_left', 'back_right']);
+    expect(form.seats).toBe(3);
+  });
+
+  it('saves the offered seats in front-to-back order, and the count matches', () => {
+    const row = toTripRow('me', car, { ...valid, openSeats: ['back_right', 'front'] });
+    expect(row).toMatchObject({ seat_layout: '4', open_seats: ['front', 'back_right'], seats_offered: 2 });
+  });
+
+  it('leaves trips without a seat map alone when editing', () => {
+    const update = toTripUpdate({ ...valid, seatLayout: null, openSeats: [], seats: 2 });
+    expect(update.seats_offered).toBe(2);
+    expect(update).not.toHaveProperty('open_seats');
   });
 
   it.each(['0.5', '11', 'abc', ''])('rejects gas price %j', (gasPrice) => {
@@ -119,8 +164,9 @@ describe('editing', () => {
     const values = tripFormFromTrip(row);
     expect(validateTripForm(values, car.seats, NOW)).toEqual({});
 
-    const update = toTripUpdate({ ...values, seats: 2 });
-    expect(update).toMatchObject({ seats_offered: 2, parking: 'offsite', flight_number: 'AA 1234' });
+    const update = toTripUpdate({ ...values, openSeats: ['front', 'back_left'] });
+    expect(update).toMatchObject({ seats_offered: 2, open_seats: ['front', 'back_left'], parking: 'offsite', flight_number: 'AA 1234' });
+    expect(update).not.toHaveProperty('seat_layout');
     expect(update).not.toHaveProperty('gas_price');
     expect(update).not.toHaveProperty('route_miles');
     expect(update).not.toHaveProperty('mpg');

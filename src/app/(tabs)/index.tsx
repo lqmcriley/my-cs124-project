@@ -1,19 +1,21 @@
 // Screen 3: Home / Find a ride.
 // Loads upcoming trips from Supabase, then filters them on the phone by From, To and date.
 
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
+import { RefreshControl, StyleSheet, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
 import { AnimatedItem } from '@/components/motion';
 import { PlaceSearchField } from '@/components/place-search-field';
 import { TripCard } from '@/components/trip-card';
 import { TripsMap } from '@/components/trips-map';
-import { Body, Card, Chip, ErrorText, Heading, Screen, SegmentedControl } from '@/components/ui';
+import { EmptyState, LoadError, SkeletonList } from '@/components/states';
+import { Body, Chip, ErrorText, Heading, Screen, SegmentedControl } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Place, QUICK_PICKS, QuickPick } from '@/lib/config';
+import { friendlyError } from '@/lib/errors';
 import { firstName } from '@/lib/format';
 import { searchTrips } from '@/lib/trip-search';
 import { Reliability } from '@/lib/reliability';
@@ -51,7 +53,7 @@ export default function HomeScreen() {
         setReliability(reliabilityResult);
         setRatings(ratingResult);
       })
-      .catch((err: Error) => setLoadError(err.message));
+      .catch((err: Error) => setLoadError(friendlyError(err)));
   }, []);
 
   // Reload every time this tab comes into view (e.g. after posting a trip).
@@ -71,6 +73,12 @@ export default function HomeScreen() {
   const results = trips ? searchTrips(trips, { from, to, date }) : [];
   const passingBy = results.filter((match) => match.along).length;
   const hasFilters = from !== null || to !== null || date !== null;
+
+  function clearFilters() {
+    setFrom(null);
+    setTo(null);
+    setDate(null);
+  }
 
   return (
     <Screen edges={['top']} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
@@ -98,19 +106,25 @@ export default function HomeScreen() {
         onChange={setView}
       />
 
-      <ErrorText>{loadError}</ErrorText>
-
-      {trips === null && !loadError ? (
-        <ActivityIndicator color={colors.primary} size="large" style={{ marginTop: Spacing.lg }} />
+      {trips !== null && <ErrorText>{loadError}</ErrorText>}
+      {trips === null ? (
+        loadError ? <LoadError message={loadError} onRetry={load} /> : <SkeletonList />
       ) : results.length === 0 ? (
-        <Card>
-          <Body style={{ fontWeight: '700' }}>{hasFilters ? 'No rides match yet' : 'No upcoming rides yet'}</Body>
-          <Body muted>
-            {hasFilters
-              ? 'Try another day or a nearby destination, or check back later.'
-              : 'Be the first! Driving somewhere? Post your trip in the "Post a trip" tab.'}
-          </Body>
-        </Card>
+        hasFilters ? (
+          <EmptyState
+            icon="search-outline"
+            title="No rides match yet"
+            message="Try another day or a nearby destination. New trips get posted all the time."
+            action={{ title: 'Clear search', icon: 'close', onPress: clearFilters }}
+          />
+        ) : (
+          <EmptyState
+            icon="car-outline"
+            title="No upcoming rides yet"
+            message="Driving somewhere soon? Post your trip and split the gas."
+            action={{ title: 'Post a trip', icon: 'add', onPress: () => router.navigate('/post') }}
+          />
+        )
       ) : view === 'map' ? (
         <TripsMap trips={results.map((match) => match.trip)} />
       ) : (

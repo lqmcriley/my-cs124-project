@@ -9,6 +9,7 @@ import { Logo } from '@/components/logo';
 import { Body, Button, ErrorText, Heading, Screen, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { isIllinoisEmail, normalizeEmail } from '@/lib/email';
+import { friendlyError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 
 // Supabase's code length is a dashboard setting (Email OTP Length), so accept 6–8 digits.
@@ -18,7 +19,7 @@ const CODE_MAX_LENGTH = 8;
 const NOT_UIUC_MESSAGE = 'Hitch Illini is only for UIUC students. Please use your @illinois.edu email.';
 
 // Turn Supabase's technical errors into something a person can act on.
-function friendlyError(message: string): string {
+function signInError(message: string): string {
   const text = message.toLowerCase();
   if (text.includes('illinois.edu') || text.includes('database error')) return NOT_UIUC_MESSAGE;
   if (text.includes('rate limit') || text.includes('security purposes')) {
@@ -27,8 +28,7 @@ function friendlyError(message: string): string {
   if (text.includes('expired') || text.includes('invalid')) {
     return "That code didn't work. Check it, or tap \"Send a new code\".";
   }
-  if (text.includes('network')) return "Can't reach the internet. Check your connection and try again.";
-  return message;
+  return friendlyError(message);
 }
 
 export default function SignInScreen() {
@@ -53,7 +53,7 @@ export default function SignInScreen() {
     });
     setBusy(false);
     if (sendError) {
-      setError(friendlyError(sendError.message));
+      setError(signInError(sendError.message));
       return;
     }
     setCode('');
@@ -71,7 +71,7 @@ export default function SignInScreen() {
     });
     setBusy(false);
     if (verifyError) {
-      setError(friendlyError(verifyError.message));
+      setError(signInError(verifyError.message));
     }
     // On success there's nothing to do here: the auth provider sees the new
     // session and the root layout switches to the next screen.

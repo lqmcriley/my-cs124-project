@@ -8,19 +8,22 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { IRS_MILEAGE_RATE } from '@/lib/config';
 import { formatMoney } from '@/lib/format';
+import { energy, Fuel, isElectric } from '@/lib/fuel';
 import { priceTable, tripPriceSummary } from '@/lib/pricing';
 
 type Props = {
   miles: number;
   mpg: number;
-  gasPrice: number;
+  gasPrice: number; // $ per kWh for electric cars
+  fuel?: Fuel; // electric cars show mi/kWh and charging cost
   seatsOffered: number;
   ridersBooked: number;
   viewer: 'rider' | 'driver';
 };
 
-export function PriceBreakdown({ miles, mpg, gasPrice, seatsOffered, ridersBooked, viewer }: Props) {
+export function PriceBreakdown({ miles, mpg, gasPrice, fuel, seatsOffered, ridersBooked, viewer }: Props) {
   const colors = useTheme();
+  const power = energy(fuel);
   const { ifYouJoin, ifFull } = tripPriceSummary({ miles, mpg, gasPrice, seatsOffered, ridersBooked });
   const table = priceTable({ miles, mpg, gasPrice, seatsOffered });
   // The row to highlight: what a new rider would pay now, or the current split for the driver.
@@ -64,15 +67,24 @@ export function PriceBreakdown({ miles, mpg, gasPrice, seatsOffered, ridersBooke
       )}
 
       <Line label="Distance" value={`${miles.toFixed(1)} mi`} />
-      <Line label={`Gas used (${mpg} MPG)`} value={`${ifFull.gallons.toFixed(2)} gal`} />
-      <Line label={`Gas cost at ${formatMoney(gasPrice)}/gal`} value={formatMoney(ifFull.totalGasCost)} />
+      {isElectric(fuel) ? (
+        <>
+          <Line label={`Energy used (${mpg} mi/kWh)`} value={`${ifFull.gallons.toFixed(1)} kWh`} />
+          <Line label={`Charging cost at ${formatMoney(gasPrice)}/kWh`} value={formatMoney(ifFull.totalGasCost)} />
+        </>
+      ) : (
+        <>
+          <Line label={`Gas used (${mpg} MPG)`} value={`${ifFull.gallons.toFixed(2)} gal`} />
+          <Line label={`Gas cost at ${formatMoney(gasPrice)}/gal`} value={formatMoney(ifFull.totalGasCost)} />
+        </>
+      )}
       {ifYouJoin.capped && (
         <Text style={{ color: colors.success, fontSize: 14 }}>
           Some prices are lowered to the IRS cap of {formatMoney(IRS_MILEAGE_RATE)}/mile.
         </Text>
       )}
       <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-        Gas is split between everyone in the car, driver included, and the price drops as others join. If someone gets
+        The {power.thing} cost is split between everyone in the car, driver included, and the price drops as others join. If someone gets
         off early, each stretch of road is split between whoever is in the car for it, so everyone pays their fair
         share. Drivers never make a profit.
       </Text>

@@ -12,6 +12,7 @@ import { Body, Button, Card, ErrorText, Heading, Screen, Text, TextField } from 
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchTripRiders } from '@/lib/booking-api';
+import { friendlyError } from '@/lib/errors';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { canReviewNow, peopleToReview, Reviewable } from '@/lib/reviews';
 import { fetchMyReviewsForTrip, submitReviews } from '@/lib/reviews-api';
@@ -43,7 +44,7 @@ export default function ReviewScreen() {
         setPeople(peopleToReview(trip, riders, userId).filter((person) => !done.has(person.id)));
       })
       .catch((err: Error) => {
-        if (!stale) setError(err.message);
+        if (!stale) setError(friendlyError(err));
       });
     return () => {
       stale = true;
@@ -76,7 +77,7 @@ export default function ReviewScreen() {
       router.back();
     } catch (err) {
       errorHaptic();
-      setError(err instanceof Error ? err.message : "Couldn't save. Please try again.");
+      setError(friendlyError(err, "Couldn't save. Please try again."));
     } finally {
       setSaving(false);
     }

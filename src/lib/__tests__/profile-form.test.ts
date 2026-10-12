@@ -8,8 +8,9 @@ const driver = {
   model: 'Civic',
   color: 'Silver',
   plate: 'abc1234',
+  modelYear: '2019',
   mpg: '32.5',
-  seats: '3',
+  seatLayout: '4' as const,
 };
 
 describe('validateProfileForm', () => {
@@ -35,16 +36,22 @@ describe('validateProfileForm', () => {
 
   it('requires every car field for drivers', () => {
     const errors = validateProfileForm({ ...rider, isDriver: true });
-    expect(Object.keys(errors).sort()).toEqual(['color', 'make', 'model', 'mpg', 'plate', 'seats']);
+    expect(Object.keys(errors).sort()).toEqual(['color', 'make', 'model', 'modelYear', 'mpg', 'plate']);
   });
 
   it.each(['0', '4', '151', 'abc', ''])('rejects MPG %j', (mpg) => {
     expect(validateProfileForm({ ...driver, mpg }).mpg).toBeDefined();
   });
 
-  it.each(['0', '8', '2.5', ''])('rejects seats %j', (seats) => {
-    expect(validateProfileForm({ ...driver, seats }).seats).toBeDefined();
+  it.each(['', '19', '1975', '2099', 'abcd'])('rejects model year %j', (modelYear) => {
+    expect(validateProfileForm({ ...driver, modelYear }).modelYear).toBeDefined();
   });
+
+  it('checks miles per kWh for electric cars instead of MPG', () => {
+    expect(validateProfileForm({ ...driver, fuel: 'electric', mpg: '3.8' })).toEqual({});
+    expect(validateProfileForm({ ...driver, fuel: 'electric', mpg: '32' }).mpg).toMatch(/miles per kWh/);
+  });
+
 });
 
 describe('database rows', () => {
@@ -71,8 +78,11 @@ describe('database rows', () => {
       model: 'Civic',
       color: 'Silver',
       plate: 'ABC1234',
+      model_year: 2019,
+      fuel: 'regular',
       mpg: 32.5,
       seats: 3,
+      seat_layout: '4',
       body_type: 'sedan',
     });
   });
@@ -82,7 +92,12 @@ describe('database rows', () => {
       { id: 'u', full_name: 'A B', avatar_url: null, year: 'Junior', major: 'CS', bio: null, chat_preference: 'quiet' },
       { id: 'c', owner_id: 'u', make: 'Kia', model: 'Soul', color: 'Red', plate: 'X1', mpg: 30, seats: 4 },
     );
-    expect(values).toMatchObject({ fullName: 'A B', year: 'Junior', vibes: { vibe_chat: 0, vibe_music: 2, vibe_temp: 2, vibe_windows: 2, vibe_stops: 2 }, isDriver: true, mpg: '30', seats: '4' });
+    expect(values).toMatchObject({ fullName: 'A B', year: 'Junior', vibes: { vibe_chat: 0, vibe_music: 2, vibe_temp: 2, vibe_windows: 2, vibe_stops: 2 }, isDriver: true, mpg: '30', seatLayout: '5' });
+  });
+
+  it('seats always match the seat layout', () => {
+    expect(toCarRow('user-1', { ...driver, seatLayout: '7' })).toMatchObject({ seats: 6, seat_layout: '7' });
+    expect(toCarRow('user-1', { ...driver, seatLayout: '5_cramped' })).toMatchObject({ seats: 4, seat_layout: '5_cramped' });
   });
 });
 

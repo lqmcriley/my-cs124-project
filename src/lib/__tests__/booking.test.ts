@@ -101,6 +101,10 @@ describe('requestBlocker', () => {
     expect(requestBlocker(trip('t', '2026-10-09T09:00:00'), 'me', null, NOW)).toMatch(/left/);
   });
 
+  it('blocks sample trips', () => {
+    expect(requestBlocker({ ...open, is_sample: true }, 'me', null, NOW)).toMatch(/sample trip/);
+  });
+
   it('blocks a second request but allows one after a decline', () => {
     expect(requestBlocker(open, 'me', request('r', open, 'pending'), NOW)).toMatch(/already/);
     expect(requestBlocker(open, 'me', request('r', open, 'declined'), NOW)).toBeNull();

@@ -1,8 +1,10 @@
 // The rules for the profile + car form, kept separate from the screen so they're easy to test.
 
-import { BIO_MAX_LENGTH, CarBodyType, MAX_MPG, MAX_PASSENGER_SEATS, MIN_MPG } from './config';
+import { BIO_MAX_LENGTH, CarBodyType } from './config';
+import { energy, Fuel, isElectric, validModelYear } from './fuel';
 import { cleanHandle, handleError, PaymentMethods } from './payments';
 import { formatPhone, normalizePhone } from './phone';
+import { layoutForSeats, passengerCount, SeatLayout } from './seats';
 import type { Car, ClassYear, Profile } from './types';
 import { chatPreferenceFromVibe, Vibes, vibesFrom } from './vibes';
 
@@ -18,8 +20,10 @@ export type ProfileFormValues = {
   model: string;
   color: string;
   plate: string;
-  mpg: string;
-  seats: string;
+  modelYear: string; // e.g. "2019"
+  fuel: Fuel;
+  mpg: string; // miles per kWh for electric cars
+  seatLayout: SeatLayout; // how many seats, in which rows
   bodyType: CarBodyType;
   // Payment handles (optional, private)
   venmo: string;
@@ -47,8 +51,10 @@ export function initialFormValues(
     model: car?.model ?? '',
     color: car?.color ?? '',
     plate: car?.plate ?? '',
+    modelYear: car?.model_year ? String(car.model_year) : '',
+    fuel: car?.fuel ?? 'regular',
     mpg: car ? String(car.mpg) : '',
-    seats: car ? String(car.seats) : '',
+    seatLayout: car?.seat_layout ?? (car ? layoutForSeats(car.seats) : '5'),
     bodyType: car?.body_type ?? 'sedan',
     venmo: payment?.venmo_username ?? '',
     cashapp: payment?.cashapp_cashtag ?? '',
@@ -79,14 +85,14 @@ export function validateProfileForm(values: ProfileFormValues): ProfileFormError
     if (!values.plate.trim()) errors.plate = 'Required';
     else if (values.plate.trim().length > 10) errors.plate = 'Plates are 10 characters or fewer.';
 
-    const mpg = Number(values.mpg);
-    if (!values.mpg.trim() || !Number.isFinite(mpg) || mpg < MIN_MPG || mpg > MAX_MPG) {
-      errors.mpg = `Enter your car's MPG (${MIN_MPG}–${MAX_MPG}).`;
-    }
+    if (!validModelYear(Number(values.modelYear))) errors.modelYear = `Enter the year, e.g. 2019.`;
 
-    const seats = Number(values.seats);
-    if (!Number.isInteger(seats) || seats < 1 || seats > MAX_PASSENGER_SEATS) {
-      errors.seats = `Enter 1–${MAX_PASSENGER_SEATS} passenger seats.`;
+    const { efficiencyName, minEfficiency, maxEfficiency } = energy(values.fuel);
+    const mpg = Number(values.mpg);
+    if (!values.mpg.trim() || !Number.isFinite(mpg) || mpg < minEfficiency || mpg > maxEfficiency) {
+      errors.mpg = isElectric(values.fuel)
+        ? `Enter miles per kWh (${minEfficiency}–${maxEfficiency}). It's on your car's screen, usually 3–4.`
+        : `Enter your car's ${efficiencyName} (${minEfficiency}–${maxEfficiency}).`;
     }
   }
 
@@ -121,8 +127,11 @@ export function toCarRow(userId: string, values: ProfileFormValues) {
     model: values.model.trim(),
     color: values.color.trim(),
     plate: values.plate.trim().toUpperCase(),
+    model_year: Number(values.modelYear),
+    fuel: values.fuel,
     mpg: Number(values.mpg),
-    seats: Number(values.seats),
+    seats: passengerCount(values.seatLayout),
+    seat_layout: values.seatLayout,
     body_type: values.bodyType,
   };
 }

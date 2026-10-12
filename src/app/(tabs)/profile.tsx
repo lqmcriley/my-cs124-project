@@ -16,6 +16,7 @@ import { formatRating, RatingSummary } from '@/lib/reviews';
 import { fetchRatingSummary, fetchRecentReviews, ReviewWithReviewer } from '@/lib/reviews-api';
 import { firstName } from '@/lib/format';
 import { useTheme } from '@/hooks/use-theme';
+import { carName, efficiencyText, fuelTag } from '@/lib/fuel';
 import { useAuth } from '@/providers/auth-provider';
 
 export default function ProfileScreen() {
@@ -78,12 +79,13 @@ export default function ProfileScreen() {
             <View style={{ alignItems: 'center' }}>
               <CarIllustration color={car.color} bodyType={car.body_type} width={220} />
             </View>
-            <Body style={{ textAlign: 'center', fontWeight: '600' }}>
-              {car.color} {car.make} {car.model}
-            </Body>
+            <Body style={{ textAlign: 'center', fontWeight: '600' }}>{carName(car)}</Body>
             <Body muted style={{ textAlign: 'center' }}>
-              Plate {car.plate} · {car.mpg} MPG · {car.seats} passenger {car.seats === 1 ? 'seat' : 'seats'}
+              {[`Plate ${car.plate}`, efficiencyText(car.mpg, car.fuel), fuelTag(car.fuel), `${car.seats} passenger ${car.seats === 1 ? 'seat' : 'seats'}`]
+                .filter(Boolean)
+                .join(' · ')}
             </Body>
+            {!car.model_year && <Body muted style={{ textAlign: 'center' }}>Add your car&apos;s year and fuel in Edit profile.</Body>}
           </>
         ) : (
           <Body muted>No car added. Add one in Edit profile if you want to drive.</Body>

@@ -4,6 +4,7 @@
 import { router } from 'expo-router';
 import { Alert } from 'react-native';
 
+import { friendlyError } from '@/lib/errors';
 import { blockUser } from '@/lib/safety-api';
 
 export function showPersonActions(input: { userId: string; personId: string; name: string; tripId?: string; onBlocked?: () => void }) {
@@ -31,7 +32,7 @@ export function showPersonActions(input: { userId: string; personId: string; nam
                     Alert.alert('Blocked', `You won't see ${name}'s trips anymore.`);
                     onBlocked?.();
                   })
-                  .catch((err: Error) => Alert.alert("Couldn't block", err.message)),
+                  .catch((err: Error) => Alert.alert("Couldn't block", friendlyError(err))),
             },
           ],
         ),

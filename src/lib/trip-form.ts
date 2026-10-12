@@ -2,8 +2,10 @@
 
 import type { Parking } from './airport';
 import { isLongTrip, LongTripPlan } from './long-trip';
-import { DEFAULT_GAS_PRICE, MAX_GAS_PRICE, MIN_GAS_PRICE, Place, TRIP_NOTES_MAX_LENGTH } from './config';
+import { Place, TRIP_NOTES_MAX_LENGTH } from './config';
+import { energy, Fuel } from './fuel';
 import type { Route } from './maps';
+import { defaultOpenSeats, layoutForSeats, SeatId, SeatLayout, sortSeats } from './seats';
 import type { Car, Luggage, Trip } from './types';
 
 export type TripFormValues = {
@@ -13,9 +15,13 @@ export type TripFormValues = {
   departure: Date | null;
   flexMinutes: number;
   seats: number;
+  // Seat map: the car's layout and the seats offered (null layout = trip posted before seat maps).
+  seatLayout: SeatLayout | null;
+  openSeats: SeatId[];
   luggage: Luggage;
   notes: string;
-  gasPrice: string; // text while typing
+  gasPrice: string; // text while typing ($ per kWh for electric cars)
+  fuel: Fuel; // from the car; electric cars use a charging price
   // Airport trips (only used when `to` is an airport)
   flightNumber: string;
   flightDepartsAt: Date | null;
@@ -31,16 +37,21 @@ export type TripFormValues = {
 export type TripFormErrors = Partial<Record<keyof TripFormValues, string>>;
 
 export function emptyTripForm(car: Car): TripFormValues {
+  const seatLayout = car.seat_layout ?? layoutForSeats(car.seats);
+  const openSeats = defaultOpenSeats(seatLayout);
   return {
     from: null,
     to: null,
     route: null,
     departure: null,
     flexMinutes: 30,
-    seats: car.seats,
+    seats: openSeats.length,
+    seatLayout,
+    openSeats,
     luggage: 'backpack',
     notes: '',
-    gasPrice: DEFAULT_GAS_PRICE.toFixed(2),
+    gasPrice: energy(car.fuel).defaultPrice.toFixed(2),
+    fuel: car.fuel ?? 'regular',
     flightNumber: '',
     flightDepartsAt: null,
     flightInternational: false,
@@ -67,9 +78,12 @@ export function tripFormFromTrip(trip: Trip): TripFormValues {
     departure: new Date(trip.departure_at),
     flexMinutes: trip.flex_minutes,
     seats: trip.seats_offered,
+    seatLayout: trip.seat_layout ?? null,
+    openSeats: trip.seat_layout ? sortSeats(trip.seat_layout, trip.open_seats ?? []) : [],
     luggage: trip.luggage,
     notes: trip.notes ?? '',
     gasPrice: trip.gas_price.toFixed(2),
+    fuel: trip.fuel ?? 'regular',
     flightNumber: trip.flight_number ?? '',
     flightDepartsAt: trip.flight_departs_at ? new Date(trip.flight_departs_at) : null,
     flightInternational: trip.flight_international,
@@ -92,13 +106,16 @@ export function validateTripForm(values: TripFormValues, maxSeats: number, now: 
   if (!values.departure) errors.departure = 'Pick a date and time.';
   else if (values.departure.getTime() <= now.getTime()) errors.departure = 'Departure must be in the future.';
 
-  if (!Number.isInteger(values.seats) || values.seats < 1 || values.seats > maxSeats) {
+  if (values.seatLayout) {
+    if (values.openSeats.length === 0) errors.seats = 'Tap at least one seat to offer it.';
+  } else if (!Number.isInteger(values.seats) || values.seats < 1 || values.seats > maxSeats) {
     errors.seats = `Offer 1–${maxSeats} seats.`;
   }
 
+  const { priceName, unit, minPrice, maxPrice } = energy(values.fuel);
   const gasPrice = Number(values.gasPrice);
-  if (!values.gasPrice.trim() || !Number.isFinite(gasPrice) || gasPrice < MIN_GAS_PRICE || gasPrice > MAX_GAS_PRICE) {
-    errors.gasPrice = `Enter a gas price between $${MIN_GAS_PRICE} and $${MAX_GAS_PRICE}.`;
+  if (!values.gasPrice.trim() || !Number.isFinite(gasPrice) || gasPrice < minPrice || gasPrice > maxPrice) {
+    errors.gasPrice = `Enter a ${priceName.toLowerCase()} between $${minPrice.toFixed(2)} and $${maxPrice.toFixed(2)} per ${unit}.`;
   }
 
   if (values.notes.length > TRIP_NOTES_MAX_LENGTH) errors.notes = `Keep notes under ${TRIP_NOTES_MAX_LENGTH} characters.`;
@@ -133,6 +150,13 @@ function airportColumns(values: TripFormValues) {
   };
 }
 
+// Seats offered. With a seat map, the count always matches the seats tapped.
+function seatColumns(values: TripFormValues): { seats_offered: number; open_seats?: SeatId[] } {
+  if (!values.seatLayout) return { seats_offered: values.seats };
+  const open = sortSeats(values.seatLayout, values.openSeats);
+  return { seats_offered: open.length, open_seats: open };
+}
+
 // The long-trip columns. Normal-length trips get none.
 function longTripColumns(values: TripFormValues) {
   const isLong = isLongTrip(values.route?.minutes);
@@ -163,7 +187,8 @@ export function toTripRow(driverId: string, car: Car, values: TripFormValues) {
     route_polyline: route.encodedPolyline,
     departure_at: departure.toISOString(),
     flex_minutes: values.flexMinutes,
-    seats_offered: values.seats,
+    ...seatColumns(values),
+    seat_layout: values.seatLayout,
     pickup_spot: from.name,
     luggage: values.luggage,
     notes: values.notes.trim() || null,
@@ -180,7 +205,7 @@ export function toTripUpdate(values: TripFormValues) {
   return {
     departure_at: values.departure.toISOString(),
     flex_minutes: values.flexMinutes,
-    seats_offered: values.seats,
+    ...seatColumns(values),
     luggage: values.luggage,
     notes: values.notes.trim() || null,
     ...airportColumns(values),

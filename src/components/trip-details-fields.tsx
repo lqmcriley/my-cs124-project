@@ -6,12 +6,14 @@ import { StyleSheet, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
 import { FoldSection } from '@/components/fold-section';
+import { SeatMap } from '@/components/seat-map';
 import { Body, Button, Chip, ErrorText, IconRow, Label, SegmentedControl, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { suggestedLeaveTime, terminalArrival } from '@/lib/airport';
 import { FLEX_WINDOWS, LUGGAGE_OPTIONS, SHUTTLE_MINUTE_OPTIONS, TRIP_NOTES_MAX_LENGTH } from '@/lib/config';
 import { formatDeparture, formatFlex, formatTime } from '@/lib/format';
 import { estimatedArrival, isLongTrip, longTripLabel, ROOM_RULE } from '@/lib/long-trip';
+import { SeatHold, SeatId, sortSeats } from '@/lib/seats';
 import type { TripFormErrors, TripFormValues } from '@/lib/trip-form';
 
 export type TripSection = 'where' | 'airport' | 'long' | 'when' | 'seats' | 'notes' | 'gas';
@@ -41,15 +43,25 @@ type Props = {
   set: <K extends keyof TripFormValues>(field: K, value: TripFormValues[K]) => void;
   maxSeats: number;
   minSeats?: number; // can't go below riders already approved
+  holds?: SeatHold[]; // seats riders already asked for (Edit trip); these can't be un-offered
   open: Partial<Record<TripSection, boolean>>;
   toggle: (section: TripSection) => void;
 };
 
-export function TripDetailsFields({ values, errors, set, maxSeats, minSeats = 1, open, toggle }: Props) {
+export function TripDetailsFields({ values, errors, set, maxSeats, minSeats = 1, holds = [], open, toggle }: Props) {
   const isAirport = values.to?.isAirport === true;
   const driveMinutes = values.route?.minutes ?? null;
   const shuttleMinutes = values.parking === 'offsite' ? values.shuttleMinutes : 0;
   const luggage = LUGGAGE_OPTIONS.find((option) => option.value === values.luggage)?.label ?? '';
+
+  // Seat map: tap a seat to offer it or not. The seat count follows.
+  function toggleSeat(seat: SeatId) {
+    if (!values.seatLayout) return;
+    const next = values.openSeats.includes(seat) ? values.openSeats.filter((id) => id !== seat) : [...values.openSeats, seat];
+    const sorted = sortSeats(values.seatLayout, next);
+    set('openSeats', sorted);
+    set('seats', sorted.length);
+  }
 
   const suggestion =
     isAirport && values.flightDepartsAt && driveMinutes !== null
@@ -225,17 +237,26 @@ export function TripDetailsFields({ values, errors, set, maxSeats, minSeats = 1,
       <FoldSection
         title="Seats & luggage"
         icon="people-outline"
-        summary={`${values.seats} ${values.seats === 1 ? 'seat' : 'seats'} · ${luggage}`}
+        summary={`${values.seats} ${values.seats === 1 ? 'seat' : 'seats'} offered · ${luggage}`}
         open={!!open.seats}
         onToggle={() => toggle('seats')}
         hasError={sectionHasError('seats', errors)}>
-        <Label>Seats offered</Label>
-        <SegmentedControl
-          options={Array.from({ length: maxSeats - minSeats + 1 }, (_, i) => i + minSeats).map((count) => ({ value: count, label: String(count) }))}
-          value={values.seats}
-          onChange={(count) => set('seats', count)}
-        />
-        {minSeats > 1 && <Body muted>You&apos;ve approved {minSeats} riders, so you can&apos;t offer fewer seats.</Body>}
+        {values.seatLayout ? (
+          <>
+            <Label>Seats you&apos;re offering</Label>
+            <SeatMap layout={values.seatLayout} openSeats={values.openSeats} holds={holds} mode="offer" onToggle={toggleSeat} />
+          </>
+        ) : (
+          <>
+            <Label>Seats offered</Label>
+            <SegmentedControl
+              options={Array.from({ length: maxSeats - minSeats + 1 }, (_, i) => i + minSeats).map((count) => ({ value: count, label: String(count) }))}
+              value={values.seats}
+              onChange={(count) => set('seats', count)}
+            />
+            {minSeats > 1 && <Body muted>You&apos;ve approved {minSeats} riders, so you can&apos;t offer fewer seats.</Body>}
+          </>
+        )}
         <ErrorText>{errors.seats}</ErrorText>
         <Label>Luggage space per rider</Label>
         <View style={styles.chips}>

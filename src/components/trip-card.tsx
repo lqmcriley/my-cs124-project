@@ -4,13 +4,14 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { Text } from '@/components/ui';
+import { Badge, Text } from '@/components/ui';
 import { Avatar } from '@/components/avatar';
 import { FadeSwap, PressableScale } from '@/components/motion';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { firstName, formatDeparture, formatMoney, formatTime } from '@/lib/format';
 import { terminalArrival } from '@/lib/airport';
+import { fuelTag, isElectric } from '@/lib/fuel';
 import { longTripLabel } from '@/lib/long-trip';
 import { payingRiders, riderEstimate } from '@/lib/booking';
 import type { Place } from '@/lib/config';
@@ -72,6 +73,8 @@ export function TripCard({ trip, reliability, rating, along, stop }: Props) {
             {driverName}
             {formatRating(rating) ? ` · ${formatRating(rating)}` : ''} · <Text style={{ color: trustColor, fontWeight: '600' }}>{trust.label}</Text>
           </Text>
+          {trip.is_sample && <Badge label="Sample" tone="neutral" />}
+          {trip.is_practice && <Badge label="Practice: try booking here" tone="waiting" />}
         </View>
         <View style={styles.priceBox}>
           <FadeSwap value={partPrice ?? ifYouJoin.perSeat}>
@@ -101,6 +104,7 @@ export function TripCard({ trip, reliability, rating, along, stop }: Props) {
           <Detail icon="moon-outline" text={longTripLabel(trip.long_trip_plan ?? null, trip.overnight_stop ?? null)!} />
         )}
         <Detail icon="people-outline" text={`${seatsLeft} ${seatsLeft === 1 ? 'seat' : 'seats'} left`} />
+        {fuelTag(trip.fuel) && <Detail icon={isElectric(trip.fuel) ? 'flash-outline' : 'water-outline'} text={fuelTag(trip.fuel)!} />}
         <Detail icon="location-outline" text={`Pickup: ${trip.pickup_spot}`} />
       </View>
     </PressableScale>

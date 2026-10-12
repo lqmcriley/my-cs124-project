@@ -1,13 +1,13 @@
 // Screen 7: Trip group chat. Only the driver and approved riders can open it.
 // New messages arrive live through Supabase Realtime.
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeInDown, LayoutAnimationConfig } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Icon } from '@/components/icon';
 import { Avatar } from '@/components/avatar';
 import { PressableScale } from '@/components/motion';
 import { EmptyState, LoadError } from '@/components/states';
@@ -18,7 +18,7 @@ import { fetchTripRiders } from '@/lib/booking-api';
 import { fetchMessages, MESSAGE_MAX_LENGTH, sendMessage, subscribeToMessages } from '@/lib/chat-api';
 import { friendlyError } from '@/lib/errors';
 import { errorHaptic, tapHaptic } from '@/lib/haptics';
-import { firstName, formatTime } from '@/lib/format';
+import { formatTime, shortName } from '@/lib/format';
 import { fetchTrip } from '@/lib/trips-api';
 import type { Message } from '@/lib/types';
 import { useAuth } from '@/providers/auth-provider';
@@ -30,7 +30,7 @@ async function loadChatInfo(tripId: string, userId: string): Promise<ChatInfo> {
   const [trip, riders] = await Promise.all([fetchTrip(tripId), fetchTripRiders(tripId)]);
   if (!trip) throw new Error('Trip not found.');
   const members: Record<string, Member> = {
-    [trip.driver_id]: { name: `${firstName(trip.driver.full_name)} (driver)`, avatarUrl: trip.driver.avatar_url },
+    [trip.driver_id]: { name: `${shortName(trip.driver)} (driver)`, avatarUrl: trip.driver.avatar_url },
   };
   for (const rider of riders) members[rider.rider_id] = { name: rider.first_name, avatarUrl: rider.avatar_url };
   return { title: `${trip.dest_name} chat`, members, isMember: userId in members };
@@ -156,7 +156,7 @@ export default function ChatScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Send"
                 style={[styles.send, { backgroundColor: colors.primary, opacity: sending || !draft.trim() ? 0.4 : 1 }]}>
-                {sending ? <ActivityIndicator color={colors.onPrimary} /> : <Ionicons name="arrow-up" size={22} color={colors.onPrimary} />}
+                {sending ? <ActivityIndicator color={colors.onPrimary} /> : <Icon name="arrow-up" size={22} color={colors.onPrimary} />}
               </PressableScale>
             </View>
           </>
@@ -214,6 +214,7 @@ const styles = StyleSheet.create({
   bubble: {
     maxWidth: '78%',
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 2,
@@ -236,6 +237,7 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     borderWidth: 1,
     borderRadius: 22,
+    borderCurve: 'continuous',
     paddingHorizontal: Spacing.md,
     paddingTop: 12,
     fontSize: 16,
@@ -244,6 +246,7 @@ const styles = StyleSheet.create({
     width: TapTarget - 2,
     height: 44,
     borderRadius: 22,
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },

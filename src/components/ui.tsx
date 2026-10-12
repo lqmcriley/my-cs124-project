@@ -1,10 +1,11 @@
 // Small building blocks used on every screen. They all read colors from
 // useTheme(), so light and dark mode work automatically.
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { ReactElement, ReactNode, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  InputAccessoryView,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   RefreshControlProps,
@@ -24,6 +25,7 @@ import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSprin
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { Icon, type IconName } from '@/components/icon';
 import { FadeSwap, PressableScale } from '@/components/motion';
 import { FontFamily, Radius, Spacing, TapTarget } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -105,7 +107,7 @@ type ButtonProps = {
   title: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: IconName;
   loading?: boolean;
   disabled?: boolean;
 };
@@ -138,7 +140,7 @@ export function Button({ title, onPress, variant = 'primary', icon, loading, dis
         <ActivityIndicator color={textColor} />
       ) : (
         <>
-          {icon && <Ionicons name={icon} size={19} color={textColor} />}
+          {icon && <Icon name={icon} size={19} color={textColor} />}
           <Text style={[styles.buttonText, { color: textColor }]}>{title}</Text>
         </>
       )}
@@ -157,6 +159,8 @@ export function TextField({ label, hint, error, style, onFocus, onBlur, ...input
       <TextInput
         placeholderTextColor={colors.textSecondary}
         accessibilityLabel={label}
+        returnKeyType={inputProps.multiline ? 'default' : 'done'}
+        inputAccessoryViewID={KEYBOARD_DONE_ID}
         {...inputProps}
         onFocus={(event) => {
           setFocused(true);
@@ -184,6 +188,30 @@ export function TextField({ label, hint, error, style, onFocus, onBlur, ...input
   );
 }
 
+// A bar on top of the iPhone keyboard with a Done button that closes it.
+// Text fields point at it with inputAccessoryViewID={KEYBOARD_DONE_ID}.
+// Rendered once, in the root layout. (Android keyboards have their own hide key.)
+export const KEYBOARD_DONE_ID = 'keyboard-done';
+
+export function KeyboardDoneBar() {
+  const colors = useTheme();
+  if (Platform.OS !== 'ios') return null;
+  return (
+    <InputAccessoryView nativeID={KEYBOARD_DONE_ID}>
+      <View style={[styles.doneBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <PressableScale
+          onPress={() => Keyboard.dismiss()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Done, close the keyboard"
+          style={[styles.doneButton, { backgroundColor: colors.selected }]}>
+          <Text style={[styles.doneText, { color: colors.onSelected }]}>Done</Text>
+        </PressableScale>
+      </View>
+    </InputAccessoryView>
+  );
+}
+
 // A rounded, tappable option. Use a row of these to pick one choice.
 export function Chip({
   label,
@@ -194,10 +222,10 @@ export function Chip({
   label: string;
   selected: boolean;
   onPress: () => void;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: IconName;
 }) {
   const colors = useTheme();
-  const textColor = selected ? colors.onPrimary : colors.text;
+  const textColor = selected ? colors.onSelected : colors.text;
   return (
     <PressableScale
       onPress={onPress}
@@ -207,11 +235,11 @@ export function Chip({
       style={[
         styles.chip,
         {
-          backgroundColor: selected ? colors.primary : colors.card,
-          borderColor: selected ? colors.primary : colors.border,
+          backgroundColor: selected ? colors.selected : colors.card,
+          borderColor: selected ? colors.selected : colors.border,
         },
       ]}>
-      {icon && <Ionicons name={icon} size={18} color={textColor} />}
+      {icon && <Icon name={icon} size={18} color={textColor} />}
       <Text style={[styles.chipText, { color: textColor }]}>{label}</Text>
     </PressableScale>
   );
@@ -239,6 +267,23 @@ export function Card({ children, style }: { children: ReactNode; style?: StylePr
 }
 
 const styles = StyleSheet.create({
+  doneBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  doneButton: {
+    borderRadius: Radius.pill,
+    borderCurve: 'continuous',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 7,
+  },
+  doneText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
   chipRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -268,6 +313,7 @@ const styles = StyleSheet.create({
   button: {
     minHeight: TapTarget,
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -282,6 +328,7 @@ const styles = StyleSheet.create({
     minHeight: TapTarget,
     borderWidth: 1,
     borderRadius: Radius.md,
+    borderCurve: 'continuous',
     paddingHorizontal: Spacing.md,
     fontSize: 16,
   },
@@ -289,6 +336,7 @@ const styles = StyleSheet.create({
     minHeight: 40,
     paddingHorizontal: 16,
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -308,6 +356,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     borderWidth: 1,
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
     paddingHorizontal: 10,
     paddingVertical: 2,
   },
@@ -318,6 +367,7 @@ const styles = StyleSheet.create({
   segments: {
     flexDirection: 'row',
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
     padding: SEGMENT_PAD,
     gap: SEGMENT_GAP,
   },
@@ -327,11 +377,13 @@ const styles = StyleSheet.create({
     bottom: SEGMENT_PAD,
     left: 0,
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
   },
   segment: {
     flex: 1,
     minHeight: 40,
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -349,6 +401,7 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     borderWidth: 1,
     padding: Spacing.md,
     gap: Spacing.sm,
@@ -356,11 +409,11 @@ const styles = StyleSheet.create({
 });
 
 // A line of text with a small icon in front, e.g. a trip detail or a profile fact.
-export function IconRow({ icon, text, muted }: { icon: keyof typeof Ionicons.glyphMap; text: string; muted?: boolean }) {
+export function IconRow({ icon, text, muted }: { icon: IconName; text: string; muted?: boolean }) {
   const colors = useTheme();
   return (
     <View style={styles.iconRow}>
-      <Ionicons name={icon} size={18} color={muted ? colors.textSecondary : colors.primary} />
+      <Icon name={icon} size={18} color={muted ? colors.textSecondary : colors.primary} />
       <Text style={[styles.body, { color: muted ? colors.textSecondary : colors.text, flex: 1 }]}>{text}</Text>
     </View>
   );
@@ -376,7 +429,7 @@ export function Checkbox({ label, checked, onChange }: { label: string; checked:
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
       style={styles.checkbox}>
-      <Ionicons name={checked ? 'checkbox' : 'square-outline'} size={24} color={checked ? colors.primary : colors.textSecondary} />
+      <Icon name={checked ? 'checkbox' : 'square-outline'} size={24} color={checked ? colors.primary : colors.textSecondary} />
       <Text style={[styles.body, { color: colors.text, flex: 1 }]}>{label}</Text>
     </PressableScale>
   );
@@ -400,7 +453,7 @@ export function SegmentedControl<T extends string | number>({
   value,
   onChange,
 }: {
-  options: readonly { value: T; label: string; icon?: keyof typeof Ionicons.glyphMap }[];
+  options: readonly { value: T; label: string; icon?: IconName }[];
   value: T;
   onChange: (value: T) => void;
 }) {
@@ -460,12 +513,12 @@ export function SegmentedControl<T extends string | number>({
         {width > 0 && (
           <Animated.View
             pointerEvents="none"
-            style={[styles.segmentBubble, { width: segmentWidth, backgroundColor: colors.primary }, bubble]}
+            style={[styles.segmentBubble, { width: segmentWidth, backgroundColor: colors.selected }, bubble]}
           />
         )}
         {options.map((option) => {
           const selected = option.value === value;
-          const textColor = selected ? colors.onPrimary : colors.text;
+          const textColor = selected ? colors.onSelected : colors.text;
           return (
             <PressableScale
               key={String(option.value)}
@@ -480,7 +533,7 @@ export function SegmentedControl<T extends string | number>({
               accessibilityState={{ selected }}
               accessibilityLabel={option.label}
               style={styles.segment}>
-              {option.icon && <Ionicons name={option.icon} size={16} color={textColor} />}
+              {option.icon && <Icon name={option.icon} size={16} color={textColor} />}
               <Text style={[styles.segmentText, { color: textColor }]} numberOfLines={1}>
                 {option.label}
               </Text>

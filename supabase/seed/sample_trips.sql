@@ -7,7 +7,7 @@
 -- Dates are relative to today, so run it again any time to refresh them.
 -- To remove every sample before launch, run supabase/seed/remove_sample_trips.sql.
 --
--- Needs the migrations up to 20261017000000_car_year_and_fuel.sql first.
+-- Needs the migrations up to 20261020000000_ride_tags.sql first.
 
 -- Start fresh: remove any earlier samples (trips and cars go with their drivers).
 delete from auth.users where email like 'hitchillini.sample%@illinois.edu';
@@ -32,18 +32,18 @@ insert into auth.users (id, email, banned_until) values
   ('00000000-5a3b-4e00-8000-000000000011', 'hitchillini.sample11@illinois.edu', 'infinity'),
   ('00000000-5a3b-4e00-8000-000000000010', 'hitchillini.sample10@illinois.edu', 'infinity');
 
-insert into public.profiles (id, full_name, year, major, bio, chat_preference, vibe_chat, vibe_music, vibe_temp, vibe_windows, vibe_stops) values
-  ('00000000-5a3b-4e00-8000-000000000001', 'Maya Rodriguez', 'Junior', 'Industrial Design', 'Home to the suburbs most weekends. Snacks provided.', 'talk', 3, 3, 2, 2, 3),
-  ('00000000-5a3b-4e00-8000-000000000002', 'Ethan Park', 'Senior', 'Computer Science', 'Flying out of O''Hare a lot for interviews.', 'quiet', 1, 2, 1, 1, 1),
-  ('00000000-5a3b-4e00-8000-000000000003', 'Priya Shah', 'Sophomore', 'Molecular & Cellular Biology', 'Indy is home. Podcasts or quiet, your call.', 'talk', 2, 1, 2, 1, 2),
-  ('00000000-5a3b-4e00-8000-000000000004', 'Jordan Ellis', 'Grad', 'Civil Engineering', 'Big van, lots of room for luggage.', 'talk', 2, 2, 2, 2, 3),
-  ('00000000-5a3b-4e00-8000-000000000005', 'Sam Okafor', 'Junior', 'Finance', 'St. Louis native. Aux is open.', 'talk', 4, 4, 2, 3, 2),
-  ('00000000-5a3b-4e00-8000-000000000006', 'Hannah Kowalski', 'Senior', 'Agricultural Engineering', 'Truck has a covered bed, so bring the big suitcase.', 'talk', 2, 3, 1, 3, 1),
-  ('00000000-5a3b-4e00-8000-000000000007', 'Leo Nguyen', 'Sophomore', 'Music', 'Small car, good playlists.', 'talk', 3, 4, 2, 2, 2),
-  ('00000000-5a3b-4e00-8000-000000000008', 'Ava Thompson', 'Junior', 'Psychology', 'Driving home to Minneapolis for breaks.', 'talk', 2, 2, 3, 1, 3),
-  ('00000000-5a3b-4e00-8000-000000000009', 'Marcus Bell', 'Grad', 'Physics', 'Two seats in the back. Tight but comfy.', 'quiet', 1, 3, 2, 4, 1),
-  ('00000000-5a3b-4e00-8000-000000000011', 'Taylor Practice', 'Senior', 'Practice driver', 'I''m a practice driver. Join my ride to see how Hitch Illini works. Nobody is really driving.', 'talk', 2, 2, 2, 2, 2),
-  ('00000000-5a3b-4e00-8000-000000000010', 'Grace Lin', 'Senior', 'Accountancy', 'Very on time. Very precise gas math.', 'quiet', 1, 1, 2, 0, 0);
+insert into public.profiles (id, full_name, year, major, bio, chat_preference, ride_tags) values
+  ('00000000-5a3b-4e00-8000-000000000001', 'Maya Rodriguez', 'Junior', 'Industrial Design', 'Home to the suburbs most weekends. Snacks provided.', 'talk', array['chatty', 'music', 'snacks']),
+  ('00000000-5a3b-4e00-8000-000000000002', 'Ethan Park', 'Senior', 'Computer Science', 'Flying out of O''Hare a lot for interviews.', 'quiet', array['quiet']),
+  ('00000000-5a3b-4e00-8000-000000000003', 'Priya Shah', 'Sophomore', 'Molecular & Cellular Biology', 'Indy is home. Podcasts or quiet, your call.', 'talk', array['early_bird']),
+  ('00000000-5a3b-4e00-8000-000000000004', 'Jordan Ellis', 'Grad', 'Civil Engineering', 'Big van, lots of room for luggage.', 'talk', array['snacks']),
+  ('00000000-5a3b-4e00-8000-000000000005', 'Sam Okafor', 'Junior', 'Finance', 'St. Louis native. Aux is open.', 'talk', array['chatty', 'music']),
+  ('00000000-5a3b-4e00-8000-000000000006', 'Hannah Kowalski', 'Senior', 'Agricultural Engineering', 'Truck has a covered bed, so bring the big suitcase.', 'talk', array['music', 'early_bird']),
+  ('00000000-5a3b-4e00-8000-000000000007', 'Leo Nguyen', 'Sophomore', 'Music', 'Small car, good playlists.', 'talk', array['chatty', 'music']),
+  ('00000000-5a3b-4e00-8000-000000000008', 'Ava Thompson', 'Junior', 'Psychology', 'Driving home to Minneapolis for breaks.', 'talk', array['snacks']),
+  ('00000000-5a3b-4e00-8000-000000000009', 'Marcus Bell', 'Grad', 'Physics', 'Two seats in the back. Tight but comfy.', 'quiet', array['quiet', 'music', 'early_bird']),
+  ('00000000-5a3b-4e00-8000-000000000011', 'Taylor Practice', 'Senior', 'Practice driver', 'I''m a practice driver. Join my ride to see how Hitch Illini works. Nobody is really driving.', 'talk', '{}'),
+  ('00000000-5a3b-4e00-8000-000000000010', 'Grace Lin', 'Senior', 'Accountancy', 'Very on time. Very precise gas math.', 'quiet', array['quiet']);
 
 -- Passenger seats are filled in from the seat layout.
 insert into public.cars (id, owner_id, make, model, color, body_type, mpg, seats, seat_layout, model_year, fuel, plate) values

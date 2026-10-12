@@ -44,3 +44,7 @@ example
 
 # secrets (API keys) — never commit
 .env
+
+# Vercel (web deploys)
+.vercel
+.env*

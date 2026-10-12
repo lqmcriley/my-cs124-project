@@ -1,11 +1,11 @@
 // A card that folds open and closed. Closed, it shows a one-line summary of
 // what's inside (e.g. "Fri, Oct 17 · 9:00 AM · ±30 min"); tap to open.
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
+import { Icon, type IconName } from '@/components/icon';
 import { glide, PressableScale } from '@/components/motion';
 import { Text } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
@@ -13,7 +13,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 type Props = {
   title: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: IconName;
   summary: string; // shown under the title, open or closed
   open: boolean;
   onToggle: () => void;
@@ -35,7 +35,7 @@ export function FoldSection({ title, icon, summary, open, onToggle, hasError, ch
         accessibilityLabel={`${title}: ${summary}`}
         style={styles.header}>
         <View style={[styles.iconCircle, { backgroundColor: colors.track }]}>
-          <Ionicons name={icon} size={18} color={colors.primary} />
+          <Icon name={icon} size={18} color={colors.primary} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
@@ -43,7 +43,7 @@ export function FoldSection({ title, icon, summary, open, onToggle, hasError, ch
             {summary}
           </Text>
         </View>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textSecondary} />
+        <Icon name={open ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textSecondary} />
       </PressableScale>
       {open && (
         <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={styles.body}>
@@ -58,6 +58,7 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     overflow: 'hidden',
   },
   header: {
@@ -71,6 +72,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },

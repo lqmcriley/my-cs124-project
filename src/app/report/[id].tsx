@@ -3,9 +3,10 @@
 
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert } from 'react-native';
+
 
 import { Body, Button, Chip, ChipRow, ErrorText, Heading, Label, Screen, TextField } from '@/components/ui';
+import { showAlert } from '@/lib/alert';
 import { friendlyError } from '@/lib/errors';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { REPORT_REASONS, reportUser } from '@/lib/safety-api';
@@ -32,7 +33,7 @@ export default function ReportScreen() {
     try {
       await reportUser({ reporterId: session!.user.id, reportedId: id, tripId: trip || null, reason, details });
       successHaptic();
-      Alert.alert('Report sent', `Thanks for telling us. ${who} won't be told who reported them.`);
+      showAlert('Report sent', `Thanks for telling us. ${who} won't be told who reported them.`);
       router.back();
     } catch (err) {
       errorHaptic();

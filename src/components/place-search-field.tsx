@@ -2,13 +2,13 @@
 // and onChange receives the place with its coordinates.
 // Pass quick-pick chips as children; they show while nothing is picked.
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
+import { Icon } from '@/components/icon';
 import { PressableScale } from '@/components/motion';
-import { Body, ErrorText, Label, Text } from '@/components/ui';
+import { Body, ErrorText, KEYBOARD_DONE_ID, Label, Text } from '@/components/ui';
 import { FontFamily, Radius, Spacing, TapTarget } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Place } from '@/lib/config';
@@ -83,7 +83,7 @@ export function PlaceSearchField({ label, value, onChange, placeholder, error, c
       <View style={{ gap: Spacing.xs }}>
         <Label>{label}</Label>
         <View style={[styles.bar, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
-          <Ionicons name="location" size={20} color={colors.primary} />
+          <Icon name="location" size={20} color={colors.primary} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.mainText, { color: colors.text }]} numberOfLines={1}>
               {value.name}
@@ -119,8 +119,9 @@ export function PlaceSearchField({ label, value, onChange, placeholder, error, c
               borderWidth: focused ? 1.5 : 1,
             },
           ]}>
-          <Ionicons name="search" size={19} color={focused ? colors.primary : colors.textSecondary} />
+          <Icon name="search" size={19} color={focused ? colors.primary : colors.textSecondary} />
           <TextInput
+            inputAccessoryViewID={KEYBOARD_DONE_ID}
             value={query}
             onChangeText={(text) => {
               setQuery(text);
@@ -143,7 +144,7 @@ export function PlaceSearchField({ label, value, onChange, placeholder, error, c
                 setLoadingSuggestions(false);
               }}
               accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={10}>
-              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              <Icon name="close-circle" size={20} color={colors.textSecondary} />
             </Pressable>
           )}
         </View>
@@ -160,7 +161,7 @@ export function PlaceSearchField({ label, value, onChange, placeholder, error, c
               accessibilityRole="button"
               style={[styles.row, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}>
               <View style={[styles.pin, { backgroundColor: colors.track }]}>
-                <Ionicons name="location-outline" size={16} color={colors.primary} />
+                <Icon name="location-outline" size={16} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.mainText, { color: colors.text }]} numberOfLines={1}>
@@ -192,6 +193,7 @@ const styles = StyleSheet.create({
   bar: {
     minHeight: TapTarget + 4,
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
     flexDirection: 'row',
@@ -205,6 +207,7 @@ const styles = StyleSheet.create({
   },
   changeButton: {
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
@@ -218,6 +221,7 @@ const styles = StyleSheet.create({
   list: {
     borderWidth: 1,
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     overflow: 'hidden',
   },
   row: {
@@ -232,6 +236,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1,8 +1,8 @@
 // Tap 1–5 stars. Each tap gives a small vibration tick.
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, View } from 'react-native';
 
+import { Icon } from '@/components/icon';
 import { PressableScale } from '@/components/motion';
 import { useTheme } from '@/hooks/use-theme';
 import { selectionHaptic } from '@/lib/haptics';
@@ -24,7 +24,7 @@ export function StarInput({ value, onChange, size = 34 }: { value: number; onCha
           }}
           accessibilityRole="button"
           accessibilityLabel={`${star} ${star === 1 ? 'star' : 'stars'}`}>
-          <Ionicons name={star <= value ? 'star' : 'star-outline'} size={size} color={star <= value ? colors.primary : colors.textSecondary} />
+          <Icon name={star <= value ? 'star' : 'star-outline'} size={size} color={star <= value ? colors.primary : colors.textSecondary} />
         </PressableScale>
       ))}
     </View>

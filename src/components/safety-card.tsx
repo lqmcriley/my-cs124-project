@@ -1,9 +1,10 @@
 // Safety tools for anyone in the car: share trip details with a friend, and call 911.
 
-import { Alert, Linking, Share, StyleSheet, View } from 'react-native';
+import { Linking, Share, StyleSheet, View } from 'react-native';
 
 import { Body, Button, Card, Label } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
+import { showAlert } from '@/lib/alert';
 import { tripShareMessage } from '@/lib/share';
 import type { TripWithDriver } from '@/lib/types';
 
@@ -14,7 +15,7 @@ export function SafetyCard({ trip, arrival }: { trip: TripWithDriver; arrival: D
   }
 
   function callEmergency() {
-    Alert.alert('Call 911?', 'This will call emergency services right away.', [
+    showAlert('Call 911?', 'This will call emergency services right away.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Call 911', style: 'destructive', onPress: () => Linking.openURL('tel:911') },
     ]);

@@ -6,15 +6,17 @@ import { cleanHandle, handleError, PaymentMethods } from './payments';
 import { formatPhone, normalizePhone } from './phone';
 import { layoutForSeats, passengerCount, SeatLayout } from './seats';
 import type { Car, ClassYear, Profile } from './types';
-import { chatPreferenceFromVibe, Vibes, vibesFrom } from './vibes';
+import type { RideTag } from './ride-tags';
 
 // What the form holds while you're typing. Numbers are strings until we save.
 export type ProfileFormValues = {
-  fullName: string;
+  firstName: string;
+  lastName: string;
+  nickname: string; // optional: what people call you, e.g. "Quinn"
   year: ClassYear | null;
   major: string;
   bio: string;
-  vibes: Vibes; // vibe check sliders
+  rideTags: RideTag[]; // ride style, up to 4
   isDriver: boolean;
   make: string;
   model: string;
@@ -41,11 +43,14 @@ export function initialFormValues(
   phone: string | null = null,
 ): ProfileFormValues {
   return {
-    fullName: profile?.full_name ?? '',
+    // Profiles saved before first/last names existed: split the full name.
+    firstName: profile?.first_name ?? (profile?.full_name ?? '').trim().split(/\s+/)[0] ?? '',
+    lastName: profile?.last_name ?? (profile?.full_name ?? '').trim().split(/\s+/).slice(1).join(' '),
+    nickname: profile?.nickname ?? '',
     year: profile?.year ?? null,
     major: profile?.major ?? '',
     bio: profile?.bio ?? '',
-    vibes: initialVibes(profile),
+    rideTags: (profile?.ride_tags ?? []) as RideTag[],
     isDriver: car !== null,
     make: car?.make ?? '',
     model: car?.model ?? '',
@@ -63,19 +68,13 @@ export function initialFormValues(
   };
 }
 
-// Vibes from the profile. Profiles saved before the sliders existed start their
-// chat slider from the old "Quiet ride / Down to talk" choice.
-function initialVibes(profile: Profile | null): Vibes {
-  const vibes = vibesFrom(profile);
-  if (profile && profile.vibe_chat === undefined) vibes.vibe_chat = profile.chat_preference === 'quiet' ? 0 : 3;
-  return vibes;
-}
-
 // Returns an error message for each field that needs fixing. Empty object = all good.
 export function validateProfileForm(values: ProfileFormValues): ProfileFormErrors {
   const errors: ProfileFormErrors = {};
 
-  if (!values.fullName.trim()) errors.fullName = 'Please enter your name.';
+  if (!values.firstName.trim()) errors.firstName = 'Please enter your first name.';
+  if (!values.lastName.trim()) errors.lastName = 'Please enter your last name.';
+  if (values.nickname.trim().length > 30) errors.nickname = 'Keep your nickname under 30 characters.';
   if (values.bio.length > BIO_MAX_LENGTH) errors.bio = `Keep your bio under ${BIO_MAX_LENGTH} characters.`;
 
   if (values.isDriver) {
@@ -111,12 +110,16 @@ export function validateProfileForm(values: ProfileFormValues): ProfileFormError
 export function toProfileRow(userId: string, values: ProfileFormValues) {
   return {
     id: userId,
-    full_name: values.fullName.trim(),
+    full_name: `${values.firstName.trim()} ${values.lastName.trim()}`.trim(),
+    first_name: values.firstName.trim(),
+    last_name: values.lastName.trim(),
+    nickname: values.nickname.trim() || null,
     year: values.year,
     major: values.major.trim() || null,
     bio: values.bio.trim() || null,
-    chat_preference: chatPreferenceFromVibe(values.vibes.vibe_chat),
-    ...values.vibes,
+    ride_tags: values.rideTags,
+    // The older quiet/talk setting, kept in step for anything that still reads it.
+    chat_preference: values.rideTags.includes('quiet') ? ('quiet' as const) : ('talk' as const),
   };
 }
 

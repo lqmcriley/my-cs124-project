@@ -3,6 +3,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/ui';
+import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export function Logo({ size = 96 }: { size?: number }) {
@@ -10,8 +11,8 @@ export function Logo({ size = 96 }: { size?: number }) {
   return (
     <View style={styles.wrapper} accessibilityRole="image" accessibilityLabel="Hitch Illini logo">
       <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2 }]}>
-        <View style={[styles.half, { backgroundColor: '#FF6B35' }]} />
-        <View style={[styles.half, { backgroundColor: '#13294B' }]} />
+        <View style={[styles.half, { backgroundColor: Colors.light.primary }]} />
+        <View style={[styles.half, { backgroundColor: Colors.light.text }]} />
       </View>
       <Text style={[styles.wordmark, { color: colors.text }]}>Hitch Illini</Text>
     </View>

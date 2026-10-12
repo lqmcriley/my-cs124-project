@@ -20,7 +20,17 @@ export function Avatar({ uri, name, size = 64 }: { uri?: string | null; name: st
   const circle = { width: size, height: size, borderRadius: size / 2 };
 
   if (uri) {
-    return <Image source={{ uri }} style={circle} contentFit="cover" accessibilityLabel={`Photo of ${name}`} />;
+    // Cached on the phone after the first load, and fades in instead of popping.
+    return (
+      <Image
+        source={{ uri }}
+        style={[circle, { backgroundColor: colors.track }]}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={150}
+        accessibilityLabel={`Photo of ${name}`}
+      />
+    );
   }
   return (
     <View style={[styles.fallback, circle, { backgroundColor: colors.primary }]}>

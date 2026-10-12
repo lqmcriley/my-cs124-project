@@ -1,4 +1,4 @@
-import { formatPhone, normalizePhone } from '../phone';
+import { formatPhone, isCompleteUsPhone, normalizePhone } from '../phone';
 
 describe('normalizePhone', () => {
   it.each([
@@ -19,5 +19,22 @@ describe('formatPhone', () => {
   it('shows US numbers the usual way', () => {
     expect(formatPhone('+12175550123')).toBe('(217) 555-0123');
     expect(formatPhone('+442079460958')).toBe('+442079460958');
+  });
+});
+
+describe('isCompleteUsPhone', () => {
+  it('is complete at 10 digits, however it is typed', () => {
+    expect(isCompleteUsPhone('2175550123')).toBe(true);
+    expect(isCompleteUsPhone('(217) 555-0123')).toBe(true);
+    expect(isCompleteUsPhone('217555012')).toBe(false);
+  });
+
+  it('waits for 11 digits when the number starts with 1', () => {
+    expect(isCompleteUsPhone('1217555012')).toBe(false);
+    expect(isCompleteUsPhone('12175550123')).toBe(true);
+  });
+
+  it('never auto-completes international numbers', () => {
+    expect(isCompleteUsPhone('+442071234567')).toBe(false);
   });
 });

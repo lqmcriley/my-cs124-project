@@ -37,3 +37,10 @@ export function formatFlex(minutes: number): string {
 export function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] ?? '';
 }
+
+// The one name to show for someone: their nickname if they set one, else their
+// first name ("Louis Quinn" who goes by "Quinn" shows as "Quinn").
+export function shortName(person: { full_name: string; short_name?: string | null; nickname?: string | null } | null | undefined): string {
+  if (!person) return '';
+  return person.nickname?.trim() || person.short_name?.trim() || firstName(person.full_name);
+}

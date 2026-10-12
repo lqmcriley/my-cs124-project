@@ -80,9 +80,17 @@ function RootNavigator() {
           <Stack.Screen name="review/[id]" options={{ headerShown: true, title: 'Rate your trip', presentation: 'modal' }} />
           <Stack.Screen name="report/[id]" options={{ headerShown: true, title: 'Report', presentation: 'modal' }} />
           <Stack.Screen name="blocked" options={{ headerShown: true, title: 'Blocked people', headerBackTitle: 'Profile' }} />
+          {/* Slides in from the side (swipe back to return), like Blocked people. */}
+          <Stack.Screen name="edit-profile" options={{ headerShown: true, title: 'Edit profile', headerBackTitle: 'Profile' }} />
+          {/* A sheet that springs up and sizes itself to its content; drag down to close. */}
           <Stack.Screen
-            name="edit-profile"
-            options={{ headerShown: true, title: 'Edit profile', presentation: 'modal' }}
+            name="sign-out"
+            options={{
+              presentation: 'formSheet',
+              sheetAllowedDetents: 'fitToContents',
+              sheetGrabberVisible: true,
+              sheetCornerRadius: 28,
+            }}
           />
         </Stack.Protected>
       </Stack>

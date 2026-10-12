@@ -19,7 +19,7 @@ export function VibeSliders({ vibes, onChange }: { vibes: Vibes; onChange: (vibe
         const value = vibes[vibe.key];
         return (
           <View key={vibe.key} style={{ gap: 2 }}>
-            <View style={styles.spread}>
+            <View style={[styles.spread, { gap: Spacing.sm }]}>
               <Text style={[styles.title, { color: colors.text }]}>{vibe.title}</Text>
               <Text style={[styles.current, { color: colors.primary }]}>{vibeLabel(vibe, value)}</Text>
             </View>
@@ -56,24 +56,39 @@ export function VibeSliders({ vibes, onChange }: { vibes: Vibes; onChange: (vibe
   );
 }
 
-// Read-only "vibe check" for someone else: a small track with a dot where they sit.
-export function VibeMeters({ profile }: { profile: Parameters<typeof vibesFrom>[0] }) {
+// Read-only "vibe check" for someone: each vibe gets its own two lines, so
+// nothing gets cut off. Line 1: icon, name and the answer. Line 2: a bar of
+// 5 steps with theirs highlighted. `detailed` (your Profile) also labels both ends.
+export function VibeMeters({ profile, detailed = false }: { profile: Parameters<typeof vibesFrom>[0]; detailed?: boolean }) {
   const colors = useTheme();
   const vibes = vibesFrom(profile);
   return (
-    <View style={{ gap: Spacing.sm }}>
+    <View style={{ gap: detailed ? Spacing.md : Spacing.sm + 4 }}>
       {VIBES.map((vibe) => {
         const value = vibes[vibe.key];
         return (
-          <View key={vibe.key} style={styles.meterRow} accessibilityLabel={`${vibe.title}: ${vibeLabel(vibe, value)}`}>
-            <Ionicons name={value >= 3 ? vibe.highIcon : vibe.lowIcon} size={16} color={colors.primary} />
-            <Text style={[styles.meterTitle, { color: colors.textSecondary }]}>{vibe.title}</Text>
-            <View style={[styles.track, { backgroundColor: colors.track }]}>
-              <View style={[styles.dot, { backgroundColor: colors.primary, left: `${(value / VIBE_MAX) * 100}%` }]} />
+          <View key={vibe.key} style={{ gap: 6 }} accessibilityLabel={`${vibe.title}: ${vibeLabel(vibe, value)}`}>
+            <View style={styles.meterHeader}>
+              <View style={[styles.iconBubble, { backgroundColor: colors.track }]}>
+                <Ionicons name={value >= 3 ? vibe.highIcon : vibe.lowIcon} size={15} color={colors.primary} />
+              </View>
+              <Text style={[styles.meterTitle, { color: colors.text }]}>{vibe.title}</Text>
+              <Text style={[styles.meterLabel, { color: colors.primary }]}>{vibeLabel(vibe, value)}</Text>
             </View>
-            <Text style={[styles.meterLabel, { color: colors.text }]} numberOfLines={1}>
-              {vibeLabel(vibe, value)}
-            </Text>
+            <View style={styles.steps}>
+              {Array.from({ length: VIBE_MAX + 1 }, (_, step) => (
+                <View
+                  key={step}
+                  style={[styles.step, step === value ? { backgroundColor: colors.primary, height: 8 } : { backgroundColor: colors.track }]}
+                />
+              ))}
+            </View>
+            {detailed && (
+              <View style={styles.spread}>
+                <Text style={[styles.endLabel, { color: colors.textSecondary }]}>{vibe.low}</Text>
+                <Text style={[styles.endLabel, { color: colors.textSecondary }]}>{vibe.high}</Text>
+              </View>
+            )}
           </View>
         );
       })}
@@ -92,8 +107,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   current: {
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'right',
   },
   sliderRow: {
     flexDirection: 'row',
@@ -103,31 +120,37 @@ const styles = StyleSheet.create({
   endLabel: {
     fontSize: 12,
   },
-  meterRow: {
+  meterHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
   },
-  meterTitle: {
-    width: 86,
-    fontSize: 13,
-  },
-  track: {
-    flex: 1,
-    height: 6,
-    borderRadius: Radius.pill,
+  iconBubble: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  dot: {
-    position: 'absolute',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    marginLeft: -7,
+  meterTitle: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   meterLabel: {
-    width: 110,
-    fontSize: 13,
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
     textAlign: 'right',
+  },
+  steps: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 8,
+  },
+  step: {
+    flex: 1,
+    height: 5,
+    borderRadius: Radius.pill,
   },
 });
